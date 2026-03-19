@@ -138,9 +138,9 @@ const Button = ({
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }) => {
   const variants = {
     primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-600/10',
-    secondary: 'bg-white text-blue-900 border border-blue-100 hover:bg-blue-50 shadow-sm',
+    secondary: 'bg-white dark:bg-slate-800 text-blue-900 dark:text-slate-100 border border-blue-100 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700 shadow-sm',
     danger: 'bg-red-500 text-white hover:bg-red-600 shadow-sm',
-    ghost: 'bg-transparent text-blue-600 hover:bg-blue-50/80',
+    ghost: 'bg-transparent text-blue-600 dark:text-blue-400 hover:bg-blue-50/80 dark:hover:bg-slate-800',
   };
 
   return (
@@ -158,12 +158,12 @@ const Button = ({
 };
 
 const Card = ({ children, className, title, subtitle, action }: { children: React.ReactNode; className?: string; title?: string; subtitle?: string; action?: React.ReactNode; key?: string }) => (
-  <div className={cn('bg-white rounded-2xl border border-blue-100/50 shadow-sm', className)}>
+  <div className={cn('bg-white dark:bg-slate-900 rounded-2xl border border-blue-100/50 dark:border-slate-700/50 shadow-sm', className)}>
     {(title || subtitle || action) && (
-      <div className="px-6 py-5 flex items-center justify-between border-b border-blue-50">
+      <div className="px-6 py-5 flex items-center justify-between border-b border-blue-50 dark:border-slate-700/50">
         <div>
-          {title && <h3 className="text-base font-semibold text-blue-900">{title}</h3>}
-          {subtitle && <p className="text-sm text-blue-500 mt-0.5">{subtitle}</p>}
+          {title && <h3 className="text-base font-semibold text-blue-900 dark:text-slate-100">{title}</h3>}
+          {subtitle && <p className="text-sm text-blue-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
         </div>
         {action}
       </div>
@@ -174,10 +174,10 @@ const Card = ({ children, className, title, subtitle, action }: { children: Reac
 
 const Input = ({ label, error, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }) => (
   <div className="space-y-1.5 w-full">
-    {label && <label className="text-sm font-medium text-blue-900/70">{label}</label>}
-    <input 
+    {label && <label className="text-sm font-medium text-blue-900/70 dark:text-slate-400">{label}</label>}
+    <input
       className={cn(
-        'w-full px-4 py-2.5 rounded-xl bg-white border border-blue-100 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200 text-sm text-blue-900 placeholder:text-blue-300',
+        'w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/30 outline-none transition-all duration-200 text-sm text-blue-900 dark:text-slate-100 placeholder:text-blue-300 dark:placeholder:text-slate-500',
         error && 'border-red-500 focus:ring-red-500/10 focus:border-red-500',
         props.className
       )}
@@ -189,10 +189,10 @@ const Input = ({ label, error, ...props }: React.InputHTMLAttributes<HTMLInputEl
 
 const TextArea = ({ label, error, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string; error?: string }) => (
   <div className="space-y-1.5 w-full">
-    {label && <label className="text-sm font-medium text-blue-900/70">{label}</label>}
-    <textarea 
+    {label && <label className="text-sm font-medium text-blue-900/70 dark:text-slate-400">{label}</label>}
+    <textarea
       className={cn(
-        'w-full px-4 py-2.5 rounded-xl bg-white border border-blue-100 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200 text-sm text-blue-900 placeholder:text-blue-300 resize-none min-h-[100px]',
+        'w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/30 outline-none transition-all duration-200 text-sm text-blue-900 dark:text-slate-100 placeholder:text-blue-300 dark:placeholder:text-slate-500 resize-none min-h-[100px]',
         error && 'border-red-500 focus:ring-red-500/10 focus:border-red-500',
         props.className
       )}
@@ -210,10 +210,10 @@ const Checkbox = ({ label, ...props }: React.InputHTMLAttributes<HTMLInputElemen
         className="peer sr-only" 
         {...props}
       />
-      <div className="w-5 h-5 border-2 border-blue-200 rounded-md bg-white peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all duration-200 group-hover:border-blue-400" />
+      <div className="w-5 h-5 border-2 border-blue-200 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all duration-200 group-hover:border-blue-400" />
       <Icons.Check className="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" />
     </div>
-    <span className="text-sm font-medium text-blue-900/70 group-hover:text-blue-900 transition-colors">{label}</span>
+    <span className="text-sm font-medium text-blue-900/70 dark:text-slate-400 group-hover:text-blue-900 dark:group-hover:text-slate-100 transition-colors">{label}</span>
   </label>
 );
 
@@ -223,7 +223,7 @@ const Toggle = ({ checked, onChange, label }: { checked: boolean; onChange: (val
       onClick={() => onChange(!checked)}
       className={cn(
         'relative w-10 h-5 rounded-full transition-all duration-300',
-        checked ? 'bg-blue-600' : 'bg-blue-100'
+        checked ? 'bg-blue-600' : 'bg-blue-100 dark:bg-slate-700'
       )}
     >
       <div 
@@ -233,13 +233,13 @@ const Toggle = ({ checked, onChange, label }: { checked: boolean; onChange: (val
         )}
       />
     </div>
-    {label && <span className="text-sm font-medium text-blue-900/70 group-hover:text-blue-900 transition-colors">{label}</span>}
+    {label && <span className="text-sm font-medium text-blue-900/70 dark:text-slate-400 group-hover:text-blue-900 dark:group-hover:text-slate-100 transition-colors">{label}</span>}
   </label>
 );
 
 const RadioGroup = ({ label, options, value, onChange }: { label?: string; options: { value: string; label: string }[]; value: string; onChange: (val: string) => void }) => (
   <div className="space-y-2 w-full">
-    {label && <label className="text-sm font-medium text-blue-900/70">{label}</label>}
+    {label && <label className="text-sm font-medium text-blue-900/70 dark:text-slate-400">{label}</label>}
     <div className="flex flex-wrap gap-3">
       {options.map(opt => (
         <label key={opt.value} className="flex items-center gap-2 cursor-pointer group">
@@ -251,10 +251,10 @@ const RadioGroup = ({ label, options, value, onChange }: { label?: string; optio
               checked={value === opt.value}
               onChange={() => onChange(opt.value)}
             />
-            <div className="w-5 h-5 border-2 border-blue-200 rounded-full bg-white peer-checked:border-blue-600 transition-all duration-200 group-hover:border-blue-400" />
+            <div className="w-5 h-5 border-2 border-blue-200 dark:border-slate-600 rounded-full bg-white dark:bg-slate-800 peer-checked:border-blue-600 transition-all duration-200 group-hover:border-blue-400" />
             <div className="absolute w-2.5 h-2.5 bg-blue-600 rounded-full opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" />
           </div>
-          <span className="text-sm font-medium text-blue-900/70 group-hover:text-blue-900 transition-colors">{opt.label}</span>
+          <span className="text-sm font-medium text-blue-900/70 dark:text-slate-400 group-hover:text-blue-900 dark:group-hover:text-slate-100 transition-colors">{opt.label}</span>
         </label>
       ))}
     </div>
@@ -263,11 +263,11 @@ const RadioGroup = ({ label, options, value, onChange }: { label?: string; optio
 
 const Select = ({ label, options, error, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string; options: { value: string; label: string }[]; error?: string }) => (
   <div className="space-y-1.5 w-full">
-    {label && <label className="text-sm font-medium text-blue-900/70">{label}</label>}
+    {label && <label className="text-sm font-medium text-blue-900/70 dark:text-slate-400">{label}</label>}
     <div className="relative">
       <select 
         className={cn(
-          'w-full px-4 py-2.5 rounded-xl bg-white border border-blue-100 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200 text-sm text-blue-900 appearance-none',
+          'w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/30 outline-none transition-all duration-200 text-sm text-blue-900 dark:text-slate-100 appearance-none',
           error && 'border-red-500 focus:ring-red-500/10 focus:border-red-500',
           props.className
         )}
@@ -296,6 +296,28 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals'>('dashboard');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = stored !== null ? stored === 'dark' : prefersDark;
+    // Aplica a classe sincronamente antes do primeiro render
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    return isDark;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
 
   const fetchAllData = useCallback(async () => {
     if (!auth.currentUser) return;
@@ -361,15 +383,15 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-50/30">
-        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-blue-50/30 dark:bg-slate-950">
+        <div className="w-12 h-12 border-4 border-blue-200 dark:border-slate-700 border-t-blue-600 rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-blue-50/30 p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-blue-50/30 dark:bg-slate-950 p-4">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -379,8 +401,8 @@ export default function App() {
             <div className="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-blue-600/20">
               <Icons.Wallet className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-5xl font-bold text-blue-900 tracking-tighter">Finanças Pro</h1>
-            <p className="text-blue-500 text-lg font-medium">Gerencie seu dinheiro com inteligência e simplicidade.</p>
+            <h1 className="text-5xl font-bold text-blue-900 dark:text-slate-100 tracking-tighter">Finanças Pro</h1>
+            <p className="text-blue-500 dark:text-slate-400 text-lg font-medium">Gerencie seu dinheiro com inteligência e simplicidade.</p>
           </div>
           
           <Button onClick={handleLogin} className="w-full py-4 text-lg shadow-xl shadow-blue-600/10">
@@ -398,15 +420,21 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-blue-50/30 text-blue-900 font-sans">
+      <div
+        className="min-h-screen bg-blue-50/30 dark:bg-slate-950 text-blue-900 dark:text-slate-100 font-sans"
+        style={{ backgroundColor: darkMode ? '#020617' : '#f0f7ff', color: darkMode ? '#f1f5f9' : '#0f172a' }}
+      >
         {/* Sidebar / Nav */}
-        <nav className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-0 md:w-64 bg-white/90 backdrop-blur-xl border-t md:border-t-0 md:border-r border-blue-100/50 z-50">
+        <nav
+          className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-0 md:w-64 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t md:border-t-0 md:border-r border-blue-100/50 dark:border-slate-700/50 z-50"
+          style={{ backgroundColor: darkMode ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.9)' }}
+        >
           <div className="h-full flex flex-col p-4">
             <div className="hidden md:flex items-center gap-3 mb-8 px-2 mt-4">
               <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20">
                 <Icons.Wallet className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl tracking-tight text-blue-900">Finanças Pro</span>
+              <span className="font-bold text-xl tracking-tight text-blue-900 dark:text-slate-100">Finanças Pro</span>
             </div>
 
             <div className="flex md:flex-col items-center md:items-stretch justify-around md:justify-start gap-2 flex-1">
@@ -420,15 +448,22 @@ export default function App() {
               <NavButton active={activeTab === 'goals'} onClick={() => setActiveTab('goals')} icon="Target" label="Metas" />
             </div>
 
-            <div className="hidden md:block pt-4 border-t border-blue-100 mt-auto">
+            <div className="hidden md:block pt-4 border-t border-blue-100 dark:border-slate-700 mt-auto">
               <div className="flex items-center gap-3 px-2 mb-4">
-                <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border border-blue-200" alt="" />
+                <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border border-blue-200 dark:border-slate-600" alt="" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{user.displayName}</p>
-                  <p className="text-xs text-blue-500 truncate">{user.email}</p>
+                  <p className="text-sm font-semibold truncate dark:text-slate-100">{user.displayName}</p>
+                  <p className="text-xs text-blue-500 dark:text-slate-400 truncate">{user.email}</p>
                 </div>
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="p-2 rounded-xl text-blue-400 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+                  title={darkMode ? 'Modo claro' : 'Modo escuro'}
+                >
+                  {darkMode ? <Icons.Sun className="w-4 h-4" /> : <Icons.Moon className="w-4 h-4" />}
+                </button>
               </div>
-              <Button variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50" onClick={handleLogout}>
+              <Button variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={handleLogout}>
                 <Icons.LogOut className="w-4 h-4" />
                 Sair
               </Button>
@@ -441,7 +476,7 @@ export default function App() {
           <div className="max-w-5xl mx-auto p-4 md:p-8">
             <header className="flex items-start sm:items-center justify-between mb-10 mt-4 md:mt-0 gap-4 flex-col sm:flex-row">
               <div>
-                <h2 className="text-3xl font-bold tracking-tight text-blue-900">
+                <h2 className="text-3xl font-bold tracking-tight text-blue-900 dark:text-slate-100">
                   {activeTab === 'dashboard' && 'Dashboard'}
                   {activeTab === 'transactions' && 'Minhas Transações'}
                   {activeTab === 'investments' && 'Meus Investimentos'}
@@ -451,7 +486,7 @@ export default function App() {
                   {activeTab === 'accounts' && 'Minhas Contas'}
                   {activeTab === 'goals' && 'Minhas Metas'}
                 </h2>
-                <p className="text-blue-500 font-medium mt-1">
+                <p className="text-blue-500 dark:text-slate-400 font-medium mt-1">
                   {activeTab === 'dashboard' && `Bem-vindo de volta, ${user.displayName?.split(' ')[0]}!`}
                   {activeTab === 'transactions' && 'Histórico completo de movimentações.'}
                   {activeTab === 'investments' && 'Acompanhe o crescimento do seu patrimônio.'}
@@ -463,7 +498,14 @@ export default function App() {
                 </p>
               </div>
               <div className="flex items-center gap-3 self-end sm:self-auto">
-                <button onClick={handleLogout} className="md:hidden flex items-center justify-center w-10 h-10 rounded-full border border-blue-200 overflow-hidden hover:opacity-80 transition-opacity" title="Sair">
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="md:hidden flex items-center justify-center w-10 h-10 rounded-full border border-blue-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors text-blue-500 dark:text-slate-400"
+                  title={darkMode ? 'Modo claro' : 'Modo escuro'}
+                >
+                  {darkMode ? <Icons.Sun className="w-4 h-4" /> : <Icons.Moon className="w-4 h-4" />}
+                </button>
+                <button onClick={handleLogout} className="md:hidden flex items-center justify-center w-10 h-10 rounded-full border border-blue-200 dark:border-slate-700 overflow-hidden hover:opacity-80 transition-opacity" title="Sair">
                   <img src={user.photoURL || ''} className="w-full h-full object-cover" alt="Sair" />
                 </button>
                 <Button onClick={() => setIsAddModalOpen(true)} className="shadow-lg shadow-blue-900/10">
@@ -562,7 +604,7 @@ function NavButton({ active, onClick, icon, label }: { active: boolean; onClick:
       onClick={onClick}
       className={cn(
         'flex flex-col md:flex-row items-center gap-1 md:gap-3 px-4 py-2 md:py-3.5 rounded-2xl transition-all duration-300',
-        active ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-blue-500 hover:bg-blue-50 hover:text-blue-700'
+        active ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-blue-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-slate-200'
       )}
     >
       <Icon className={cn("w-5 h-5 transition-transform duration-300", active ? "text-white scale-110" : "text-blue-300")} />
@@ -740,15 +782,15 @@ function StatCard({ title, amount, icon, color }: { title: string; amount: numbe
   };
 
   return (
-    <Card className="relative overflow-hidden group border-none shadow-sm bg-white/80 backdrop-blur-sm hover:shadow-md transition-all duration-300">
+    <Card className="relative overflow-hidden group border-none shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm hover:shadow-md transition-all duration-300">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-semibold text-blue-900/60">{title}</p>
+        <p className="text-sm font-semibold text-blue-900/60 dark:text-slate-400">{title}</p>
         <div className={cn('p-2.5 rounded-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3', colors[color])}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
       <div>
-        <h4 className="text-3xl font-bold tracking-tight text-blue-900">{formatCurrency(amount)}</h4>
+        <h4 className="text-3xl font-bold tracking-tight text-blue-900 dark:text-slate-100">{formatCurrency(amount)}</h4>
       </div>
     </Card>
   );
@@ -768,7 +810,7 @@ function BudgetProgress({ transactions, categories }: { transactions: Transactio
   if (categoriesWithBudget.length === 0) return null;
 
   return (
-    <Card title="Metas de Gastos (Este Mês)" subtitle="Acompanhe seu orçamento por categoria" className="border-none shadow-sm bg-white/50 backdrop-blur-sm">
+    <Card title="Metas de Gastos (Este Mês)" subtitle="Acompanhe seu orçamento por categoria" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
       <div className="space-y-6">
         {categoriesWithBudget.map(cat => {
           const spent = expensesThisMonth.filter(t => t.category === cat.id).reduce((acc, t) => acc + t.amount, 0);
@@ -780,19 +822,19 @@ function BudgetProgress({ transactions, categories }: { transactions: Transactio
           return (
             <div key={cat.id} className="space-y-3">
               <div className="flex justify-between text-sm items-end">
-                <span className="font-medium flex items-center gap-2 text-blue-700">
+                <span className="font-medium flex items-center gap-2 text-blue-700 dark:text-blue-400">
                   <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
                   {cat.name}
                 </span>
-                <span className="text-blue-500 text-xs font-medium">
-                  <span className={cn("text-sm", isOverBudget ? 'text-red-600 font-bold' : 'text-blue-900')}>
+                <span className="text-blue-500 dark:text-slate-400 text-xs font-medium">
+                  <span className={cn("text-sm", isOverBudget ? 'text-red-600 font-bold' : 'text-blue-900 dark:text-slate-100')}>
                     {formatCurrency(spent)}
                   </span>
                   <span className="mx-1">/</span>
                   {formatCurrency(budget)}
                 </span>
               </div>
-              <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-blue-100 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div 
                   className={cn(
                     "h-full rounded-full transition-all duration-500 ease-out",
@@ -838,24 +880,24 @@ function CreditCardUsage({ accounts, transactions }: { accounts: BankAccount[]; 
   if (creditCards.length === 0) return null;
 
   return (
-    <Card title="Uso do Cartão de Crédito" subtitle="Limite utilizado vs disponível" className="border-none shadow-sm bg-white/50 backdrop-blur-sm">
+    <Card title="Uso do Cartão de Crédito" subtitle="Limite utilizado vs disponível" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
       <div className="space-y-8">
         {creditCards.map(card => (
           <div key={card.name} className="space-y-3">
             <div className="flex justify-between items-end">
               <div>
-                <h4 className="font-bold text-blue-900 text-sm">{card.name}</h4>
-                <p className="text-[10px] text-blue-500 font-medium uppercase tracking-wider">Limite: {formatCurrency(card.limit)}</p>
+                <h4 className="font-bold text-blue-900 dark:text-slate-100 text-sm">{card.name}</h4>
+                <p className="text-[10px] text-blue-500 dark:text-slate-400 font-medium uppercase tracking-wider">Limite: {formatCurrency(card.limit)}</p>
               </div>
               <div className="text-right">
-                <span className={cn("text-sm font-bold", card.percentage > 90 ? "text-red-600" : "text-blue-900")}>
+                <span className={cn("text-sm font-bold", card.percentage > 90 ? "text-red-600" : "text-blue-900 dark:text-slate-100")}>
                   {formatCurrency(card.used)}
                 </span>
-                <span className="text-blue-400 text-xs mx-1">utilizado</span>
+                <span className="text-blue-400 dark:text-slate-500 text-xs mx-1">utilizado</span>
               </div>
             </div>
-            
-            <div className="relative h-4 bg-blue-100 rounded-full overflow-hidden">
+
+            <div className="relative h-4 bg-blue-100 dark:bg-slate-700 rounded-full overflow-hidden">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${card.percentage}%` }}
@@ -941,7 +983,7 @@ function DashboardCharts({ transactions, categories, accounts }: { transactions:
 
   return (
     <div className="space-y-6">
-      <Card title="Saldo por Conta" subtitle="Saldo atual consolidado por conta" className="border-none shadow-sm bg-white/50 backdrop-blur-sm">
+      <Card title="Saldo por Conta" subtitle="Saldo atual consolidado por conta" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="h-[300px] w-full mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={accountBalancesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -967,7 +1009,7 @@ function DashboardCharts({ transactions, categories, accounts }: { transactions:
         </div>
       </Card>
 
-      <Card title="Fluxo de Caixa" subtitle="Receitas vs Despesas (Últimos 6 meses)" className="border-none shadow-sm bg-white/50 backdrop-blur-sm">
+      <Card title="Fluxo de Caixa" subtitle="Receitas vs Despesas (Últimos 6 meses)" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="h-[300px] w-full mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -986,7 +1028,7 @@ function DashboardCharts({ transactions, categories, accounts }: { transactions:
         </div>
       </Card>
 
-      <Card title="Gastos por Categoria" subtitle="Distribuição proporcional das despesas" className="border-none shadow-sm bg-white/50 backdrop-blur-sm">
+      <Card title="Gastos por Categoria" subtitle="Distribuição proporcional das despesas" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="h-[300px] w-full mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -1013,9 +1055,9 @@ function DashboardCharts({ transactions, categories, accounts }: { transactions:
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3">
           {pieData.slice(0, 4).map((item, i) => (
-            <div key={i} className="flex items-center gap-3 bg-blue-50/50 p-2 rounded-xl">
+            <div key={i} className="flex items-center gap-3 bg-blue-50/50 dark:bg-slate-800/50 p-2 rounded-xl">
               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-              <span className="text-xs font-medium text-blue-700 truncate">{item.name}</span>
+              <span className="text-xs font-medium text-blue-700 dark:text-slate-300 truncate">{item.name}</span>
             </div>
           ))}
         </div>
@@ -1026,14 +1068,14 @@ function DashboardCharts({ transactions, categories, accounts }: { transactions:
 
 function RecentTransactions({ transactions, categories, accounts, onSeeAll }: { transactions: Transaction[]; categories: Category[]; accounts: BankAccount[]; onSeeAll: () => void }) {
   return (
-    <Card title="Transações Recentes" className="border-none shadow-sm bg-white/50 backdrop-blur-sm" action={<Button variant="ghost" className="text-xs font-medium" onClick={onSeeAll}>Ver Tudo</Button>}>
+    <Card title="Transações Recentes" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm" action={<Button variant="ghost" className="text-xs font-medium" onClick={onSeeAll}>Ver Tudo</Button>}>
       <div className="space-y-2">
         {transactions.length === 0 ? (
           <div className="py-12 text-center">
-            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Icons.AlertCircle className="w-6 h-6 text-blue-300" />
+            <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Icons.AlertCircle className="w-6 h-6 text-blue-300 dark:text-slate-500" />
             </div>
-            <p className="text-blue-500 font-medium">Nenhuma transação encontrada.</p>
+            <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhuma transação encontrada.</p>
           </div>
         ) : (
           transactions.map(t => (
@@ -1049,18 +1091,18 @@ function TransactionItem({ transaction, category, account, showDate = false }: {
   const Icon = category ? Icons[category.icon as IconName] : Icons.MoreHorizontal;
   
   return (
-    <div className="flex items-center gap-4 group p-3.5 rounded-2xl bg-white hover:bg-blue-50/80 border border-blue-100 shadow-sm transition-all duration-300">
-      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', transaction.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
+    <div className="flex items-center gap-4 group p-3.5 rounded-2xl bg-white dark:bg-slate-800/50 hover:bg-blue-50/80 dark:hover:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm transition-all duration-300">
+      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', transaction.type === 'income' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-50 dark:bg-red-900/20 text-red-600')}>
         <Icon className="w-6 h-6" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-blue-800 truncate">{transaction.description || category?.name || 'Sem descrição'}</p>
-        <div className="flex items-center gap-2 text-xs font-medium text-blue-500 mt-1">
-          <span className="bg-blue-100 px-2 py-0.5 rounded-md text-blue-600">{category?.name || 'Outros'}</span>
+        <p className="font-semibold text-blue-800 dark:text-slate-200 truncate">{transaction.description || category?.name || 'Sem descrição'}</p>
+        <div className="flex items-center gap-2 text-xs font-medium text-blue-500 dark:text-slate-400 mt-1">
+          <span className="bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-md text-blue-600 dark:text-blue-400">{category?.name || 'Outros'}</span>
           {account && (
             <>
-              <span className="w-1 h-1 bg-blue-300 rounded-full" />
-              <span className="flex items-center gap-1 text-blue-600">
+              <span className="w-1 h-1 bg-blue-300 dark:bg-slate-600 rounded-full" />
+              <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
                 {transaction.paymentMethod === 'credit' ? <Icons.CreditCard className="w-3 h-3" /> : <Icons.Landmark className="w-3 h-3" />}
                 {account.name}
               </span>
@@ -1074,7 +1116,7 @@ function TransactionItem({ transaction, category, account, showDate = false }: {
           )}
         </div>
       </div>
-      <div className={cn('font-bold text-right text-lg tracking-tight', transaction.type === 'income' ? 'text-emerald-600' : 'text-blue-900')}>
+      <div className={cn('font-bold text-right text-lg tracking-tight', transaction.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
         {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
       </div>
     </div>
@@ -1123,43 +1165,43 @@ function TransactionManager({ transactions, categories, accounts, onRefresh }: {
         </div>
       </div>
 
-      <Card className="p-0 overflow-hidden border-none shadow-sm bg-white/50 backdrop-blur-sm">
+      <Card className="p-0 overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-blue-100 bg-blue-50/50">
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider">Data</th>
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider">Descrição</th>
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider">Categoria / Conta</th>
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider text-right">Valor</th>
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider text-right">Ações</th>
+              <tr className="border-b border-blue-100 dark:border-slate-700 bg-blue-50/50 dark:bg-slate-800/50">
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider">Data</th>
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider">Descrição</th>
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider">Categoria / Conta</th>
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider text-right">Valor</th>
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-100/50">
+            <tbody className="divide-y divide-blue-100/50 dark:divide-slate-700/50">
               {filtered.map(t => {
                 const account = accounts.find(a => a.id === t.accountId);
                 return (
-                  <tr key={t.id} className="hover:bg-blue-50/80 transition-colors group">
-                    <td className="px-6 py-4 text-sm font-medium text-blue-500 whitespace-nowrap">{formatDate(t.date.toDate())}</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-blue-800">{t.description || '-'}</td>
+                  <tr key={t.id} className="hover:bg-blue-50/80 dark:hover:bg-slate-800/50 transition-colors group">
+                    <td className="px-6 py-4 text-sm font-medium text-blue-500 dark:text-slate-400 whitespace-nowrap">{formatDate(t.date.toDate())}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-blue-800 dark:text-slate-200">{t.description || '-'}</td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600 w-fit">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 w-fit">
                           {categories.find(c => c.id === t.category)?.name || 'Outros'}
                         </span>
                         {account && (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-500">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-500 dark:text-slate-400">
                             {t.paymentMethod === 'credit' ? <Icons.CreditCard className="w-3 h-3" /> : <Icons.Landmark className="w-3 h-3" />}
                             {account.name}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className={cn('px-6 py-4 text-sm font-bold text-right whitespace-nowrap tracking-tight', t.type === 'income' ? 'text-emerald-600' : 'text-blue-900')}>
+                    <td className={cn('px-6 py-4 text-sm font-bold text-right whitespace-nowrap tracking-tight', t.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
                       {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => handleDelete(t.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                      <button onClick={() => handleDelete(t.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
                         <Icons.Trash2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -1171,10 +1213,10 @@ function TransactionManager({ transactions, categories, accounts, onRefresh }: {
         </div>
         {filtered.length === 0 && (
           <div className="py-24 text-center">
-            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Icons.Search className="w-6 h-6 text-blue-300" />
+            <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Icons.Search className="w-6 h-6 text-blue-300 dark:text-slate-500" />
             </div>
-            <p className="text-blue-500 font-medium">Nenhuma transação encontrada.</p>
+            <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhuma transação encontrada.</p>
           </div>
         )}
       </Card>
@@ -1231,30 +1273,30 @@ function CategoryManager({ categories, userId, onRefresh }: { categories: Catego
         {categories.map(cat => {
           const Icon = Icons[cat.icon as IconName] || Icons.Tag;
           return (
-            <Card key={cat.id} className="p-5 flex flex-col gap-4 group border-none shadow-sm bg-white/50 backdrop-blur-sm hover:shadow-md transition-all duration-300">
+            <Card key={cat.id} className="p-5 flex flex-col gap-4 group border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:shadow-md transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105" style={{ backgroundColor: `${cat.color}15`, color: cat.color }}>
                     <Icon className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="font-semibold text-blue-800 block">{cat.name}</span>
+                    <span className="font-semibold text-blue-800 dark:text-slate-200 block">{cat.name}</span>
                     {cat.budget && cat.budget > 0 && editingId !== cat.id && (
-                      <span className="text-xs font-medium text-blue-500 mt-0.5 block">Meta: {formatCurrency(cat.budget)}</span>
+                      <span className="text-xs font-medium text-blue-500 dark:text-slate-400 mt-0.5 block">Meta: {formatCurrency(cat.budget)}</span>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
-                  <button onClick={() => { setEditingId(cat.id); setEditBudget(cat.budget?.toString() || ''); }} className="p-2 text-blue-400 hover:text-blue-900 hover:bg-blue-100 rounded-full transition-colors">
+                  <button onClick={() => { setEditingId(cat.id); setEditBudget(cat.budget?.toString() || ''); }} className="p-2 text-blue-400 hover:text-blue-900 dark:hover:text-slate-100 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-full transition-colors">
                     <Icons.Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(cat.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                  <button onClick={() => handleDelete(cat.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors">
                     <Icons.Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
               {editingId === cat.id && (
-                <div className="flex gap-2 mt-2 pt-4 border-t border-blue-100">
+                <div className="flex gap-2 mt-2 pt-4 border-t border-blue-100 dark:border-slate-700">
                   <Input 
                     type="number" 
                     placeholder="Meta (R$)" 
@@ -1273,7 +1315,7 @@ function CategoryManager({ categories, userId, onRefresh }: { categories: Catego
         })}
         
         {isAdding ? (
-          <Card className="p-5 space-y-4 border-dashed border-2 border-blue-200 bg-blue-50/50 shadow-none">
+          <Card className="p-5 space-y-4 border-dashed border-2 border-blue-200 dark:border-slate-600 bg-blue-50/50 dark:bg-slate-800/50 shadow-none">
             <Input placeholder="Nome da categoria" value={newCat.name} onChange={e => setNewCat({ ...newCat, name: e.target.value })} className="bg-white" />
             <Input type="number" placeholder="Meta de gastos (opcional)" value={newCat.budget} onChange={e => setNewCat({ ...newCat, budget: e.target.value })} className="bg-white" />
             <div className="flex gap-3">
@@ -1289,7 +1331,7 @@ function CategoryManager({ categories, userId, onRefresh }: { categories: Catego
         ) : (
           <button 
             onClick={() => setIsAdding(true)}
-            className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-blue-200 text-blue-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-all duration-300 min-h-[100px]"
+            className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-blue-200 dark:border-slate-600 text-blue-400 dark:text-slate-500 hover:border-blue-400 dark:hover:border-slate-400 hover:text-blue-600 dark:hover:text-slate-300 hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-all duration-300 min-h-[100px]"
           >
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
               <Icons.Plus className="w-5 h-5" />
@@ -1349,25 +1391,25 @@ function CalendarView({ reminders, transactions, categories }: { reminders: Remi
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-2 hover:bg-blue-100 rounded-full transition-colors">
+          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-2 hover:bg-blue-100 dark:hover:bg-slate-800 rounded-full transition-colors">
             <Icons.ChevronLeft className="w-5 h-5" />
           </button>
-          <h3 className="text-xl font-bold text-blue-900 capitalize min-w-[150px] text-center">
+          <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100 capitalize min-w-[150px] text-center">
             {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
           </h3>
-          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="p-2 hover:bg-blue-100 rounded-full transition-colors">
+          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="p-2 hover:bg-blue-100 dark:hover:bg-slate-800 rounded-full transition-colors">
             <Icons.ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex p-1 bg-blue-100 rounded-2xl w-full sm:w-auto overflow-x-auto">
+        <div className="flex p-1 bg-blue-100 dark:bg-slate-800 rounded-2xl w-full sm:w-auto overflow-x-auto">
           {(['all', 'expense', 'income', 'reminder'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
                 'px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all',
-                filter === f ? 'bg-white text-blue-900 shadow-sm' : 'text-blue-500 hover:text-blue-700'
+                filter === f ? 'bg-white dark:bg-slate-700 text-blue-900 dark:text-slate-100 shadow-sm' : 'text-blue-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-slate-200'
               )}
             >
               {f === 'all' && 'Tudo'}
@@ -1379,10 +1421,10 @@ function CalendarView({ reminders, transactions, categories }: { reminders: Remi
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-blue-200/60 shadow-sm overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-blue-100 bg-blue-50/50">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-blue-200/60 dark:border-slate-700/60 shadow-sm overflow-hidden">
+        <div className="grid grid-cols-7 border-b border-blue-100 dark:border-slate-700 bg-blue-50/50 dark:bg-slate-800/50">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-            <div key={day} className="py-3 text-center text-[10px] font-bold text-blue-400 uppercase tracking-widest">
+            <div key={day} className="py-3 text-center text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest">
               {day}
             </div>
           ))}
@@ -1396,15 +1438,15 @@ function CalendarView({ reminders, transactions, categories }: { reminders: Remi
               <div 
                 key={day.toString()} 
                 className={cn(
-                  "min-h-[100px] sm:min-h-[120px] p-2 border-r border-b border-blue-100 last:border-r-0 transition-colors relative group",
-                  !isCurrentMonth && "bg-blue-50/30",
-                  isToday(day) && "bg-blue-900/[0.02]"
+                  "min-h-[100px] sm:min-h-[120px] p-2 border-r border-b border-blue-100 dark:border-slate-700/50 last:border-r-0 transition-colors relative group",
+                  !isCurrentMonth && "bg-blue-50/30 dark:bg-slate-800/30",
+                  isToday(day) && "bg-blue-900/[0.02] dark:bg-blue-500/5"
                 )}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className={cn(
                     "text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-colors",
-                    isToday(day) ? "bg-blue-900 text-white" : isCurrentMonth ? "text-blue-900" : "text-blue-300"
+                    isToday(day) ? "bg-blue-900 text-white" : isCurrentMonth ? "text-blue-900 dark:text-slate-200" : "text-blue-300 dark:text-slate-600"
                   )}>
                     {format(day, 'd')}
                   </span>
@@ -1436,8 +1478,8 @@ function CalendarView({ reminders, transactions, categories }: { reminders: Remi
                 </div>
 
                 {/* Hover Details */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none z-10 bg-white/95 backdrop-blur-sm p-3 transition-opacity border border-blue-200 shadow-xl rounded-xl -m-1">
-                  <p className="text-[10px] font-bold text-blue-400 uppercase mb-2">{format(day, "dd 'de' MMMM", { locale: ptBR })}</p>
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm p-3 transition-opacity border border-blue-200 dark:border-slate-600 shadow-xl rounded-xl -m-1">
+                  <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase mb-2">{format(day, "dd 'de' MMMM", { locale: ptBR })}</p>
                   <div className="space-y-2 max-h-[100px] overflow-y-auto pr-1">
                     {data.reminders.map(r => (
                       <div key={r.id} className="flex items-center justify-between gap-2">
@@ -1464,21 +1506,21 @@ function CalendarView({ reminders, transactions, categories }: { reminders: Remi
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 bg-white rounded-2xl border border-blue-100 shadow-sm">
-          <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Total Receitas</p>
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-sm">
+          <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest mb-1">Total Receitas</p>
           <p className="text-xl font-bold text-emerald-600">
             {formatCurrency(days.reduce((sum, day) => sum + getDayData(day).totalIncome, 0))}
           </p>
         </div>
-        <div className="p-4 bg-white rounded-2xl border border-blue-100 shadow-sm">
-          <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Total Despesas</p>
-          <p className="text-xl font-bold text-blue-900">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-sm">
+          <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest mb-1">Total Despesas</p>
+          <p className="text-xl font-bold text-blue-900 dark:text-slate-100">
             {formatCurrency(days.reduce((sum, day) => sum + getDayData(day).totalExpense, 0))}
           </p>
         </div>
-        <div className="p-4 bg-white rounded-2xl border border-blue-100 shadow-sm">
-          <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Saldo do Período</p>
-          <p className="text-xl font-bold text-blue-900">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-sm">
+          <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest mb-1">Saldo do Período</p>
+          <p className="text-xl font-bold text-blue-900 dark:text-slate-100">
             {formatCurrency(days.reduce((sum, day) => sum + (getDayData(day).totalIncome - getDayData(day).totalExpense), 0))}
           </p>
         </div>
@@ -1538,7 +1580,7 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
           </div>
         </Card>
 
-        <Card className="p-6 md:col-span-2 bg-white border-none shadow-sm flex flex-col md:flex-row items-center gap-8">
+        <Card className="p-6 md:col-span-2 bg-white dark:bg-slate-900 border-none shadow-sm flex flex-col md:flex-row items-center gap-8">
           <div className="w-full md:w-1/2 h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -1563,19 +1605,19 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
             </ResponsiveContainer>
           </div>
           <div className="w-full md:w-1/2 space-y-3">
-            <h4 className="text-sm font-bold text-blue-900 mb-4">Alocação de Ativos</h4>
+            <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100 mb-4">Alocação de Ativos</h4>
             {allocation.length > 0 ? allocation.map((item, index) => (
               <div key={item.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                  <span className="text-sm text-blue-600 font-medium">{typeLabels[item.name]}</span>
+                  <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">{typeLabels[item.name]}</span>
                 </div>
-                <span className="text-sm font-bold text-blue-900">
+                <span className="text-sm font-bold text-blue-900 dark:text-slate-100">
                   {totalInvested > 0 ? ((item.value / totalInvested) * 100).toFixed(1) : 0}%
                 </span>
               </div>
             )) : (
-              <p className="text-sm text-blue-500 italic">Nenhum investimento cadastrado.</p>
+              <p className="text-sm text-blue-500 dark:text-slate-400 italic">Nenhum investimento cadastrado.</p>
             )}
           </div>
         </Card>
@@ -1590,7 +1632,7 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
             }, acc.balance);
 
           return (
-            <Card key={acc.id} className="p-5 border-none shadow-sm bg-white/50 backdrop-blur-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden">
+            <Card key={acc.id} className="p-5 border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: acc.color }} />
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -1598,14 +1640,14 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
                     <Icons.TrendingUp className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-blue-900">{acc.name}</h3>
-                    <p className="text-xs text-blue-500 font-medium">{typeLabels[acc.investmentType || 'other']}</p>
+                    <h3 className="font-semibold text-blue-900 dark:text-slate-100">{acc.name}</h3>
+                    <p className="text-xs text-blue-500 dark:text-slate-400 font-medium">{typeLabels[acc.investmentType || 'other']}</p>
                   </div>
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t border-blue-100/50">
-                <p className="text-sm text-blue-500 mb-1">Valor Atual</p>
-                <p className="text-2xl font-bold tracking-tight text-blue-800">{formatCurrency(currentBalance)}</p>
+              <div className="mt-4 pt-4 border-t border-blue-100/50 dark:border-slate-700/50">
+                <p className="text-sm text-blue-500 dark:text-slate-400 mb-1">Valor Atual</p>
+                <p className="text-2xl font-bold tracking-tight text-blue-800 dark:text-slate-100">{formatCurrency(currentBalance)}</p>
               </div>
             </Card>
           );
@@ -1687,8 +1729,8 @@ function AccountManager({ accounts, transactions, userId, onRefresh }: { account
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-blue-900">Contas Bancárias</h2>
-          <p className="text-blue-500 mt-1">Gerencie suas contas e cartões</p>
+          <h2 className="text-2xl font-bold tracking-tight text-blue-900 dark:text-slate-100">Contas Bancárias</h2>
+          <p className="text-blue-500 dark:text-slate-400 mt-1">Gerencie suas contas e cartões</p>
         </div>
       </div>
 
@@ -1705,7 +1747,7 @@ function AccountManager({ accounts, transactions, userId, onRefresh }: { account
             }, acc.balance);
 
           return (
-            <Card key={acc.id} className="p-5 border-none shadow-sm bg-white/50 backdrop-blur-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden">
+            <Card key={acc.id} className="p-5 border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: acc.color }} />
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -1713,57 +1755,57 @@ function AccountManager({ accounts, transactions, userId, onRefresh }: { account
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-blue-900">{acc.name}</h3>
-                    <p className="text-xs text-blue-500 font-medium">{typeLabels[acc.type]}</p>
+                    <h3 className="font-semibold text-blue-900 dark:text-slate-100">{acc.name}</h3>
+                    <p className="text-xs text-blue-500 dark:text-slate-400 font-medium">{typeLabels[acc.type]}</p>
                   </div>
                 </div>
-                <button onClick={() => handleDelete(acc.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all">
+                <button onClick={() => handleDelete(acc.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl opacity-0 group-hover:opacity-100 transition-all">
                   <Icons.Trash2 className="w-4 h-4" />
                 </button>
               </div>
-              <div className="mt-4 pt-4 border-t border-blue-100/50">
+              <div className="mt-4 pt-4 border-t border-blue-100/50 dark:border-slate-700/50">
                 {acc.type === 'credit' ? (
                   <>
-                    <p className="text-sm text-blue-500 mb-1">Fatura Atual</p>
-                    <p className="text-2xl font-bold tracking-tight text-blue-800">{formatCurrency(Math.abs(currentBalance))}</p>
+                    <p className="text-sm text-blue-500 dark:text-slate-400 mb-1">Fatura Atual</p>
+                    <p className="text-2xl font-bold tracking-tight text-blue-800 dark:text-slate-100">{formatCurrency(Math.abs(currentBalance))}</p>
                     {acc.creditLimit && (
                       <div className="mt-2 flex justify-between text-xs font-medium">
-                        <span className="text-blue-500">Limite Disponível</span>
+                        <span className="text-blue-500 dark:text-slate-400">Limite Disponível</span>
                         <span className="text-emerald-600">{formatCurrency(acc.creditLimit - Math.abs(currentBalance))}</span>
                       </div>
                     )}
                     {(acc.closingDay || acc.dueDay) && (
-                      <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-blue-100/50">
+                      <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-blue-100/50 dark:border-slate-700/50">
                         {acc.closingDay && (
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 mb-0.5">Fechamento</p>
-                            <p className="text-sm font-bold text-blue-700">Dia {acc.closingDay}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 dark:text-slate-500 mb-0.5">Fechamento</p>
+                            <p className="text-sm font-bold text-blue-700 dark:text-blue-400">Dia {acc.closingDay}</p>
                           </div>
                         )}
                         {acc.dueDay && (
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 mb-0.5">Vencimento</p>
-                            <p className="text-sm font-bold text-blue-700">Dia {acc.dueDay}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 dark:text-slate-500 mb-0.5">Vencimento</p>
+                            <p className="text-sm font-bold text-blue-700 dark:text-blue-400">Dia {acc.dueDay}</p>
                           </div>
                         )}
                       </div>
                     )}
                     {acc.closingDay && (
-                      <div className="mt-4 p-3 rounded-2xl bg-blue-50/50 border border-blue-100/50 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                      <div className="mt-4 p-3 rounded-2xl bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100/50 dark:border-blue-800/50 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 shrink-0">
                           <Icons.TrendingUp className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Melhor dia para compra</p>
-                          <p className="text-sm font-bold text-blue-700">Dia {acc.closingDay + 1 > 31 ? 1 : acc.closingDay + 1}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Melhor dia para compra</p>
+                          <p className="text-sm font-bold text-blue-700 dark:text-blue-400">Dia {acc.closingDay + 1 > 31 ? 1 : acc.closingDay + 1}</p>
                         </div>
                       </div>
                     )}
                   </>
                 ) : (
                   <>
-                    <p className="text-sm text-blue-500 mb-1">Saldo Atual</p>
-                    <p className="text-2xl font-bold tracking-tight text-blue-900">{formatCurrency(currentBalance)}</p>
+                    <p className="text-sm text-blue-500 dark:text-slate-400 mb-1">Saldo Atual</p>
+                    <p className="text-2xl font-bold tracking-tight text-blue-900 dark:text-slate-100">{formatCurrency(currentBalance)}</p>
                   </>
                 )}
               </div>
@@ -1772,10 +1814,10 @@ function AccountManager({ accounts, transactions, userId, onRefresh }: { account
         })}
 
         {isAdding ? (
-          <Card className="p-6 border-none shadow-lg bg-white space-y-6">
-            <div className="flex items-center justify-between border-b border-blue-50 pb-4">
-              <h3 className="text-lg font-bold text-blue-900 tracking-tight">Nova Conta</h3>
-              <button onClick={() => setIsAdding(false)} className="p-2 text-blue-400 hover:text-blue-900 hover:bg-blue-50 rounded-full transition-colors">
+          <Card className="p-6 border-none shadow-lg bg-white dark:bg-slate-900 space-y-6">
+            <div className="flex items-center justify-between border-b border-blue-50 dark:border-slate-700 pb-4">
+              <h3 className="text-lg font-bold text-blue-900 dark:text-slate-100 tracking-tight">Nova Conta</h3>
+              <button onClick={() => setIsAdding(false)} className="p-2 text-blue-400 hover:text-blue-900 dark:hover:text-slate-100 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-full transition-colors">
                 <Icons.X className="w-5 h-5" />
               </button>
             </div>
@@ -1878,7 +1920,7 @@ function AccountManager({ accounts, transactions, userId, onRefresh }: { account
         ) : (
           <button 
             onClick={() => setIsAdding(true)}
-            className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-blue-200 text-blue-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-all duration-300 min-h-[100px]"
+            className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-blue-200 dark:border-slate-600 text-blue-400 dark:text-slate-500 hover:border-blue-400 dark:hover:border-slate-400 hover:text-blue-600 dark:hover:text-slate-300 hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-all duration-300 min-h-[100px]"
           >
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
               <Icons.Plus className="w-5 h-5" />
@@ -1902,7 +1944,7 @@ function UpcomingReminders({ reminders, categories, accounts, userId, onRefresh 
   if (upcoming.length === 0) return null;
 
   return (
-    <Card title="Próximos Vencimentos" subtitle="Lembretes para os próximos 7 dias" className="border-none shadow-sm bg-white/50 backdrop-blur-sm">
+    <Card title="Próximos Vencimentos" subtitle="Lembretes para os próximos 7 dias" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
       <div className="space-y-2">
         {upcoming.map(r => (
           <ReminderItem key={r.id} reminder={r} category={categories.find(c => c.id === r.category)} accounts={accounts} userId={userId} onRefresh={onRefresh} />
@@ -1924,30 +1966,30 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
         </Button>
       </div>
 
-      <Card className="p-0 overflow-hidden border-none shadow-sm bg-white/50 backdrop-blur-sm">
+      <Card className="p-0 overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-blue-100 bg-blue-50/50">
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider">Vencimento</th>
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider">Título</th>
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider">Frequência</th>
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider text-right">Valor</th>
-                <th className="px-6 py-4 text-xs font-semibold text-blue-500 uppercase tracking-wider text-right">Ações</th>
+              <tr className="border-b border-blue-100 dark:border-slate-700 bg-blue-50/50 dark:bg-slate-800/50">
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider">Vencimento</th>
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider">Título</th>
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider">Frequência</th>
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider text-right">Valor</th>
+                <th className="px-6 py-4 text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-100/50">
+            <tbody className="divide-y divide-blue-100/50 dark:divide-slate-700/50">
               {reminders.map(r => (
-                <tr key={r.id} className="hover:bg-blue-50/80 transition-colors group">
-                  <td className="px-6 py-4 text-sm font-medium text-blue-500 whitespace-nowrap">{formatDate(r.dueDate.toDate())}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-blue-800">{r.title}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-blue-500 capitalize">
-                    {r.frequency === 'once' ? 'Única' : 
+                <tr key={r.id} className="hover:bg-blue-50/80 dark:hover:bg-slate-800/50 transition-colors group">
+                  <td className="px-6 py-4 text-sm font-medium text-blue-500 dark:text-slate-400 whitespace-nowrap">{formatDate(r.dueDate.toDate())}</td>
+                  <td className="px-6 py-4 text-sm font-semibold text-blue-800 dark:text-slate-200">{r.title}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-blue-500 dark:text-slate-400 capitalize">
+                    {r.frequency === 'once' ? 'Única' :
                      r.frequency === 'daily' ? 'Diária' :
                      r.frequency === 'weekly' ? 'Semanal' :
                      r.frequency === 'monthly' ? 'Mensal' : 'Anual'}
                   </td>
-                  <td className={cn('px-6 py-4 text-sm font-bold text-right whitespace-nowrap tracking-tight', r.type === 'income' ? 'text-emerald-600' : 'text-blue-900')}>
+                  <td className={cn('px-6 py-4 text-sm font-bold text-right whitespace-nowrap tracking-tight', r.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
                     {r.type === 'income' ? '+' : '-'} {formatCurrency(r.amount)}
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -1955,7 +1997,7 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
                       if (!confirm('Excluir este lembrete?')) return;
                       await remindersApi.delete(r.id);
                       await onRefresh();
-                    }} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                    }} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
                       <Icons.Trash2 className="w-4 h-4" />
                     </button>
                   </td>
@@ -1966,10 +2008,10 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
         </div>
         {reminders.length === 0 && (
           <div className="py-24 text-center">
-            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Icons.Calendar className="w-6 h-6 text-blue-300" />
+            <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Icons.Calendar className="w-6 h-6 text-blue-300 dark:text-slate-500" />
             </div>
-            <p className="text-blue-500 font-medium">Nenhum lembrete configurado.</p>
+            <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhum lembrete configurado.</p>
           </div>
         )}
       </Card>
@@ -2017,26 +2059,26 @@ const ReminderItem: React.FC<{ reminder: Reminder; category?: Category; accounts
   };
 
   return (
-    <div className="flex items-center gap-4 group bg-white hover:bg-blue-50/80 p-4 rounded-2xl border border-blue-100 shadow-sm transition-all duration-300">
-      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', reminder.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
+    <div className="flex items-center gap-4 group bg-white dark:bg-slate-800/50 hover:bg-blue-50/80 dark:hover:bg-slate-800 p-4 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-sm transition-all duration-300">
+      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', reminder.type === 'income' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-50 dark:bg-red-900/20 text-red-600')}>
         <Icon className="w-6 h-6" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-blue-800 truncate">{reminder.title}</p>
-        {reminder.notes && <p className="text-xs text-blue-400 truncate mt-0.5 italic">{reminder.notes}</p>}
+        <p className="font-semibold text-blue-800 dark:text-slate-200 truncate">{reminder.title}</p>
+        {reminder.notes && <p className="text-xs text-blue-400 dark:text-slate-500 truncate mt-0.5 italic">{reminder.notes}</p>}
         <div className="flex items-center gap-2 text-xs mt-1">
-          <span className={isOverdue ? 'text-red-500 font-semibold bg-red-50 px-2 py-0.5 rounded-md' : 'text-blue-500 font-medium'}>
+          <span className={isOverdue ? 'text-red-500 font-semibold bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-md' : 'text-blue-500 dark:text-slate-400 font-medium'}>
             {isOverdue ? 'Atrasado: ' : 'Vence: '} {formatDate(reminder.dueDate.toDate())}
           </span>
           {reminder.accountId && (
-            <span className="text-blue-400 flex items-center gap-1">
+            <span className="text-blue-400 dark:text-slate-500 flex items-center gap-1">
               • <Icons.Wallet className="w-3 h-3" /> {accounts.find(a => a.id === reminder.accountId)?.name || 'Conta não encontrada'}
             </span>
           )}
         </div>
       </div>
       <div className="flex flex-col items-end gap-2">
-        <div className={cn('font-bold text-right text-lg tracking-tight', reminder.type === 'income' ? 'text-emerald-600' : 'text-blue-900')}>
+        <div className={cn('font-bold text-right text-lg tracking-tight', reminder.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
           {formatCurrency(reminder.amount)}
         </div>
         <Button 
@@ -2093,16 +2135,16 @@ function ReminderModal({ onClose, categories, accounts, userId, onRefresh }: { o
   };
 
   return (
-    <div className="fixed inset-0 bg-blue-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-blue-900/40 dark:bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-blue-100"
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-blue-100 dark:border-slate-700"
       >
-        <div className="p-6 border-b border-blue-100 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-blue-900 tracking-tight">Novo Lembrete</h3>
-          <button onClick={onClose} className="p-2 text-blue-400 hover:text-blue-900 hover:bg-blue-100 rounded-full transition-colors">
+        <div className="p-6 border-b border-blue-100 dark:border-slate-700 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100 tracking-tight">Novo Lembrete</h3>
+          <button onClick={onClose} className="p-2 text-blue-400 hover:text-blue-900 dark:hover:text-slate-100 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-full transition-colors">
             <Icons.X className="w-5 h-5" />
           </button>
         </div>
@@ -2252,16 +2294,16 @@ function TransactionModal({ onClose, categories, accounts, transactions, userId,
   };
 
   return (
-    <div className="fixed inset-0 bg-blue-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-blue-900/40 dark:bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-blue-100"
+        className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-blue-100 dark:border-slate-700"
       >
-        <div className="p-6 border-b border-blue-100 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-blue-900 tracking-tight">Nova Transação</h3>
-          <button onClick={onClose} className="p-2 text-blue-400 hover:text-blue-900 hover:bg-blue-100 rounded-full transition-colors">
+        <div className="p-6 border-b border-blue-100 dark:border-slate-700 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100 tracking-tight">Nova Transação</h3>
+          <button onClick={onClose} className="p-2 text-blue-400 hover:text-blue-900 dark:hover:text-slate-100 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-full transition-colors">
             <Icons.X className="w-5 h-5" />
           </button>
         </div>
@@ -2396,23 +2438,23 @@ function GoalsSummary({ goals, onSeeAll }: { goals: Goal[]; onSeeAll: () => void
           const Icon = Icons[goal.icon as IconName] || Icons.Target;
           
           return (
-            <div key={goal.id} className="space-y-3 p-4 rounded-2xl bg-white border border-blue-100 shadow-sm">
+            <div key={goal.id} className="space-y-3 p-4 rounded-2xl bg-white dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700 shadow-sm">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${goal.color}20`, color: goal.color }}>
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-blue-900 text-sm">{goal.name}</h4>
-                    <p className="text-[10px] text-blue-500 font-medium uppercase tracking-wider">{goal.category}</p>
+                    <h4 className="font-bold text-blue-900 dark:text-slate-100 text-sm">{goal.name}</h4>
+                    <p className="text-[10px] text-blue-500 dark:text-slate-400 font-medium uppercase tracking-wider">{goal.category}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-bold text-blue-900">{percentage.toFixed(0)}%</span>
+                  <span className="text-sm font-bold text-blue-900 dark:text-slate-100">{percentage.toFixed(0)}%</span>
                 </div>
               </div>
-              
-              <div className="h-2 bg-blue-50 rounded-full overflow-hidden">
+
+              <div className="h-2 bg-blue-50 dark:bg-slate-700 rounded-full overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${percentage}%` }}
@@ -2423,8 +2465,8 @@ function GoalsSummary({ goals, onSeeAll }: { goals: Goal[]; onSeeAll: () => void
               </div>
               
               <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                <span className="text-blue-400">{formatCurrency(goal.currentAmount)}</span>
-                <span className="text-blue-900">Alvo: {formatCurrency(goal.targetAmount)}</span>
+                <span className="text-blue-400 dark:text-slate-500">{formatCurrency(goal.currentAmount)}</span>
+                <span className="text-blue-900 dark:text-slate-300">Alvo: {formatCurrency(goal.targetAmount)}</span>
               </div>
             </div>
           );
@@ -2468,8 +2510,8 @@ function GoalsView({ goals, userId, transactions, accounts, categories, onRefres
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-xl font-bold text-blue-900">Suas Metas</h3>
-          <p className="text-sm text-blue-500">Planeje e acompanhe seus objetivos financeiros.</p>
+          <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100">Suas Metas</h3>
+          <p className="text-sm text-blue-500 dark:text-slate-400">Planeje e acompanhe seus objetivos financeiros.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={getAiHelp} disabled={loadingAi || goals.length === 0} className="relative overflow-hidden group">
@@ -2577,12 +2619,12 @@ function GoalsView({ goals, userId, transactions, accounts, categories, onRefres
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {goals.length === 0 ? (
-          <div className="col-span-full py-20 text-center bg-white/50 backdrop-blur-sm rounded-3xl border border-dashed border-blue-200">
-            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Icons.Target className="w-10 h-10 text-blue-300" />
+          <div className="col-span-full py-20 text-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-3xl border border-dashed border-blue-200 dark:border-slate-600">
+            <div className="w-20 h-20 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Icons.Target className="w-10 h-10 text-blue-300 dark:text-slate-500" />
             </div>
-            <h4 className="text-lg font-bold text-blue-900">Nenhuma meta definida</h4>
-            <p className="text-blue-500 max-w-xs mx-auto mt-2">Comece a planejar seu futuro criando sua primeira meta financeira.</p>
+            <h4 className="text-lg font-bold text-blue-900 dark:text-slate-100">Nenhuma meta definida</h4>
+            <p className="text-blue-500 dark:text-slate-400 max-w-xs mx-auto mt-2">Comece a planejar seu futuro criando sua primeira meta financeira.</p>
             <Button variant="secondary" className="mt-6" onClick={() => setIsModalOpen(true)}>Criar Primeira Meta</Button>
           </div>
         ) : (
@@ -2620,15 +2662,15 @@ function GoalItem({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () => void; 
               <Icon className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-blue-900 text-lg leading-tight">{goal.name}</h4>
-              <p className="text-xs text-blue-500 font-semibold uppercase tracking-widest mt-0.5">{goal.category}</p>
+              <h4 className="font-bold text-blue-900 dark:text-slate-100 text-lg leading-tight">{goal.name}</h4>
+              <p className="text-xs text-blue-500 dark:text-slate-400 font-semibold uppercase tracking-widest mt-0.5">{goal.category}</p>
             </div>
           </div>
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onEdit} className="p-2 rounded-xl hover:bg-blue-50 text-blue-600 transition-colors">
+            <button onClick={onEdit} className="p-2 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 transition-colors">
               <Icons.Edit2 className="w-4 h-4" />
             </button>
-            <button onClick={onDelete} className="p-2 rounded-xl hover:bg-red-50 text-red-500 transition-colors">
+            <button onClick={onDelete} className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-red-500 transition-colors">
               <Icons.Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -2636,12 +2678,12 @@ function GoalItem({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () => void; 
 
         <div className="space-y-2">
           <div className="flex justify-between items-end">
-            <span className="text-2xl font-bold text-blue-900">{percentage.toFixed(0)}%</span>
-            <span className="text-xs font-bold text-blue-500 uppercase tracking-wider">
+            <span className="text-2xl font-bold text-blue-900 dark:text-slate-100">{percentage.toFixed(0)}%</span>
+            <span className="text-xs font-bold text-blue-500 dark:text-slate-400 uppercase tracking-wider">
               {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
             </span>
           </div>
-          <div className="h-3 bg-blue-50 rounded-full overflow-hidden">
+          <div className="h-3 bg-blue-50 dark:bg-slate-700 rounded-full overflow-hidden">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${percentage}%` }}
@@ -2721,12 +2763,12 @@ function GoalModal({ onClose, userId, goal, onRefresh }: { onClose: () => void; 
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-900/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-900/40 dark:bg-black/60 backdrop-blur-sm">
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden"
+        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-blue-100/50 dark:border-slate-700/50"
       >
         <div className="bg-blue-600 p-6 text-white flex justify-between items-center">
           <div>
