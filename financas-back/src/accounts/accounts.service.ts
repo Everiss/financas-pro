@@ -10,12 +10,16 @@ export class AccountsService {
   async findAll(userId: string) {
     return this.prisma.bankAccount.findMany({
       where: { userId },
+      include: { bank: true },
       orderBy: { createdAt: 'asc' },
     });
   }
 
   async findOne(id: string, userId: string) {
-    const account = await this.prisma.bankAccount.findUnique({ where: { id } });
+    const account = await this.prisma.bankAccount.findUnique({
+      where: { id },
+      include: { bank: true },
+    });
     if (!account) throw new NotFoundException('Conta não encontrada.');
     if (account.userId !== userId) throw new ForbiddenException();
     return account;

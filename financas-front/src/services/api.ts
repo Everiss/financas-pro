@@ -68,6 +68,18 @@ export const categoriesApi = {
     request<void>(`/categories/${id}`, { method: 'DELETE' }),
 };
 
+// --- Banks ---
+
+export const banksApi = {
+  getAll: () => request<BankResponse[]>('/banks'),
+  create: (data: CreateBankPayload) =>
+    request<BankResponse>('/banks', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<CreateBankPayload>) =>
+    request<BankResponse>(`/banks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    request<void>(`/banks/${id}`, { method: 'DELETE' }),
+};
+
 // --- Accounts ---
 
 export const accountsApi = {
@@ -190,6 +202,21 @@ export interface CreateCategoryPayload {
   budget?: number;
 }
 
+export interface BankResponse {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  userId: string;
+  accounts?: AccountResponse[];
+}
+
+export interface CreateBankPayload {
+  name: string;
+  color?: string;
+  icon?: string;
+}
+
 export interface AccountResponse {
   id: string;
   name: string;
@@ -201,6 +228,8 @@ export interface AccountResponse {
   closingDay?: number;
   dueDay?: number;
   investmentType?: 'cdb' | 'stock' | 'fund' | 'fii' | 'other';
+  bankId?: string;
+  bank?: BankResponse;
   userId: string;
 }
 
@@ -214,6 +243,7 @@ export interface CreateAccountPayload {
   closingDay?: number;
   dueDay?: number;
   investmentType?: 'cdb' | 'stock' | 'fund' | 'fii' | 'other';
+  bankId?: string;
 }
 
 export interface GoalResponse {

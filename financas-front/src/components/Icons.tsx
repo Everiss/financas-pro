@@ -46,6 +46,9 @@ export const Icons = {
   Sun: Lucide.Sun,
   Moon: Lucide.Moon,
   Zap: Lucide.Zap,
+  Building2: Lucide.Building2,
+  PiggyBank: Lucide.PiggyBank,
+  Banknote: Lucide.Banknote,
 };
 
 export type IconName = keyof typeof Icons;

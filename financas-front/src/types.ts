@@ -42,6 +42,15 @@ export interface UserProfile {
   currency: string;
 }
 
+export interface Bank {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  userId: string;
+  accounts?: BankAccount[];
+}
+
 export interface BankAccount {
   id: string;
   name: string;
@@ -54,6 +63,8 @@ export interface BankAccount {
   color: string;
   icon: string;
   userId: string;
+  bankId?: string;
+  bank?: Bank;
 }
 
 export interface Goal {

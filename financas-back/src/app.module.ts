@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { CategoriesModule } from './categories/categories.module';
 import { AccountsModule } from './accounts/accounts.module';
+import { BanksModule } from './banks/banks.module';
 import { GoalsModule } from './goals/goals.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { AiModule } from './ai/ai.module';
@@ -21,6 +22,7 @@ import { AiModule } from './ai/ai.module';
     TransactionsModule,
     CategoriesModule,
     AccountsModule,
+    BanksModule,
     GoalsModule,
     RemindersModule,
     AiModule,

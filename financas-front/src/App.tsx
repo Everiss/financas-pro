@@ -8,11 +8,11 @@ import {
   User
 } from './firebase';
 import {
-  transactionsApi, categoriesApi, accountsApi, goalsApi, remindersApi, usersApi,
-  TransactionResponse, CategoryResponse, AccountResponse, GoalResponse, ReminderResponse,
+  transactionsApi, categoriesApi, accountsApi, banksApi, goalsApi, remindersApi, usersApi,
+  TransactionResponse, CategoryResponse, AccountResponse, BankResponse, GoalResponse, ReminderResponse,
   AiGoalsStrategy, CreateTransactionPayload
 } from './services/api';
-import { Transaction, Category, UserProfile, Reminder, BankAccount, Goal } from './types';
+import { Transaction, Category, UserProfile, Reminder, BankAccount, Bank, Goal } from './types';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Icons, IconName } from './components/Icons';
 import { cn, formatCurrency, formatDate } from './lib/utils';
@@ -83,6 +83,16 @@ function toCategory(r: CategoryResponse): Category {
   };
 }
 
+function toBank(r: BankResponse): Bank {
+  return {
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    icon: r.icon,
+    userId: r.userId,
+  };
+}
+
 function toAccount(r: AccountResponse): BankAccount {
   return {
     id: r.id,
@@ -96,6 +106,7 @@ function toAccount(r: AccountResponse): BankAccount {
     color: r.color,
     icon: r.icon,
     userId: r.userId,
+    bankId: r.bankId,
   };
 }
 
@@ -291,6 +302,7 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -322,15 +334,17 @@ export default function App() {
   const fetchAllData = useCallback(async () => {
     if (!auth.currentUser) return;
     try {
-      const [txs, cats, accs, gls, rems] = await Promise.all([
+      const [txs, cats, bks, accs, gls, rems] = await Promise.all([
         transactionsApi.getAll(),
         categoriesApi.getAll(),
+        banksApi.getAll(),
         accountsApi.getAll(),
         goalsApi.getAll(),
         remindersApi.getAll(),
       ]);
       setTransactions(txs.map(toTransaction));
       setCategories(cats.map(toCategory));
+      setBanks(bks.map(toBank));
       setAccounts(accs.map(toAccount));
       setGoals(gls.map(toGoal));
       setReminders(rems.map(toReminder));
@@ -558,7 +572,7 @@ export default function App() {
 
               {activeTab === 'accounts' && (
                 <motion.div key="accounts" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                  <AccountManager accounts={accounts} transactions={transactions} userId={user.uid} onRefresh={fetchAllData} />
+                  <AccountManager banks={banks} accounts={accounts} transactions={transactions} userId={user.uid} onRefresh={fetchAllData} />
                 </motion.div>
               )}
 
@@ -1657,278 +1671,313 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
   );
 }
 
-function AccountManager({ accounts, transactions, userId, onRefresh }: { accounts: BankAccount[]; transactions: Transaction[]; userId: string; onRefresh: () => Promise<void> }) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [newAcc, setNewAcc] = useState({ 
-    name: '', 
-    type: 'checking' as BankAccount['type'], 
-    investmentType: 'cdb' as BankAccount['investmentType'],
-    balance: '', 
-    creditLimit: '', 
-    closingDay: '', 
-    dueDay: '', 
-    color: '#3b82f6', 
-    icon: 'Landmark' 
-  });
+const EMPTY_ACC = {
+  name: '', type: 'checking' as BankAccount['type'],
+  investmentType: 'cdb' as BankAccount['investmentType'],
+  balance: '', creditLimit: '', closingDay: '', dueDay: '',
+  color: '#3b82f6', icon: 'CreditCard',
+};
 
-  const handleAdd = async () => {
-    if (!newAcc.name || !newAcc.balance) return;
+const BANK_COLORS = ['#3b82f6','#8b5cf6','#ec4899','#10b981','#f59e0b','#ef4444','#06b6d4','#6366f1'];
+const BANK_ICONS: IconName[] = ['Landmark','Building2','Wallet','CreditCard','PiggyBank','Banknote','TrendingUp','Briefcase'];
+
+function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: Bank[]; accounts: BankAccount[]; transactions: Transaction[]; userId: string; onRefresh: () => Promise<void> }) {
+  const [isAddingBank, setIsAddingBank] = useState(false);
+  const [newBank, setNewBank] = useState({ name: '', color: '#3b82f6', icon: 'Landmark' as IconName });
+  const [addingAccTo, setAddingAccTo] = useState<string | null>(null); // bankId
+  const [newAcc, setNewAcc] = useState({ ...EMPTY_ACC });
+
+  const typeLabels: Record<string, string> = {
+    checking: 'Conta Corrente',
+    savings: 'Poupança',
+    investment: 'Investimentos',
+    credit: 'Cartão de Crédito',
+  };
+
+  const handleAddBank = async () => {
+    if (!newBank.name) return;
+    try {
+      await banksApi.create({ name: newBank.name, color: newBank.color, icon: newBank.icon });
+      setIsAddingBank(false);
+      setNewBank({ name: '', color: '#3b82f6', icon: 'Landmark' });
+      await onRefresh();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteBank = async (id: string) => {
+    try {
+      await banksApi.delete(id);
+      await onRefresh();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleAddAccount = async (bankId: string) => {
+    if (!newAcc.name) return;
     try {
       const data: any = {
         name: newAcc.name,
         type: newAcc.type,
-        balance: parseFloat(newAcc.balance),
+        balance: parseFloat(newAcc.balance) || 0,
         color: newAcc.color,
-        icon: newAcc.icon,
+        icon: newAcc.type === 'investment' ? 'TrendingUp' : newAcc.type === 'credit' ? 'CreditCard' : newAcc.icon,
+        bankId,
       };
       if (newAcc.type === 'credit') {
         if (newAcc.creditLimit) data.creditLimit = parseFloat(newAcc.creditLimit);
         if (newAcc.closingDay) data.closingDay = parseInt(newAcc.closingDay);
         if (newAcc.dueDay) data.dueDay = parseInt(newAcc.dueDay);
       }
-      if (newAcc.type === 'investment') {
-        data.investmentType = newAcc.investmentType;
-        data.icon = 'TrendingUp';
-      }
+      if (newAcc.type === 'investment') data.investmentType = newAcc.investmentType;
       await accountsApi.create(data);
-      setIsAdding(false);
-      setNewAcc({
-        name: '',
-        type: 'checking',
-        investmentType: 'cdb',
-        balance: '',
-        creditLimit: '',
-        closingDay: '',
-        dueDay: '',
-        color: '#3b82f6',
-        icon: 'Landmark'
-      });
+      setAddingAccTo(null);
+      setNewAcc({ ...EMPTY_ACC });
       await onRefresh();
-    } catch (err) {
-      console.error('Erro ao criar conta:', err);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteAccount = async (id: string) => {
     try {
       await accountsApi.delete(id);
       await onRefresh();
-    } catch (err) {
-      console.error('Erro ao excluir conta:', err);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  const typeLabels: Record<string, string> = {
-    checking: 'Conta Corrente',
-    savings: 'Poupança',
-    investment: 'Investimentos',
-    credit: 'Cartão de Crédito'
-  };
+  // Sub-form para adicionar conta dentro de um banco
+  const AccountForm = ({ bankId, bankColor }: { bankId: string; bankColor: string }) => (
+    <div className="mt-4 pt-4 border-t border-blue-100/50 dark:border-slate-700/50 space-y-4">
+      <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100">Nova conta / cartão</h4>
+      <Input
+        label="Nome"
+        placeholder="Ex: Conta Corrente, Roxinho..."
+        value={newAcc.name}
+        onChange={e => setNewAcc({ ...newAcc, name: e.target.value })}
+      />
+      <RadioGroup
+        label="Tipo"
+        value={newAcc.type}
+        onChange={val => setNewAcc({ ...newAcc, type: val as BankAccount['type'] })}
+        options={[
+          { value: 'checking', label: 'Corrente' },
+          { value: 'savings', label: 'Poupança' },
+          { value: 'investment', label: 'Investimentos' },
+          { value: 'credit', label: 'Cartão' },
+        ]}
+      />
+      <Input
+        label={newAcc.type === 'credit' ? 'Fatura atual' : 'Saldo inicial'}
+        type="number"
+        placeholder="0,00"
+        value={newAcc.balance}
+        onChange={e => setNewAcc({ ...newAcc, balance: e.target.value })}
+      />
+      {newAcc.type === 'investment' && (
+        <Select
+          label="Tipo de Investimento"
+          value={newAcc.investmentType}
+          onChange={e => setNewAcc({ ...newAcc, investmentType: e.target.value as BankAccount['investmentType'] })}
+          options={[
+            { value: 'cdb', label: 'CDB / Renda Fixa' },
+            { value: 'stock', label: 'Ações' },
+            { value: 'fund', label: 'Fundos' },
+            { value: 'fii', label: 'FIIs' },
+            { value: 'other', label: 'Outros' },
+          ]}
+        />
+      )}
+      {newAcc.type === 'credit' && (
+        <div className="space-y-3 p-3 rounded-xl bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700">
+          <Input label="Limite de crédito" type="number" placeholder="0,00" value={newAcc.creditLimit} onChange={e => setNewAcc({ ...newAcc, creditLimit: e.target.value })} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Fechamento" type="number" placeholder="Dia" value={newAcc.closingDay} onChange={e => setNewAcc({ ...newAcc, closingDay: e.target.value })} />
+            <Input label="Vencimento" type="number" placeholder="Dia" value={newAcc.dueDay} onChange={e => setNewAcc({ ...newAcc, dueDay: e.target.value })} />
+          </div>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Button variant="secondary" className="flex-1" onClick={() => { setAddingAccTo(null); setNewAcc({ ...EMPTY_ACC }); }}>
+          Cancelar
+        </Button>
+        <Button className="flex-1" style={{ backgroundColor: bankColor }} onClick={() => handleAddAccount(bankId)}>
+          <Icons.Plus className="w-4 h-4" /> Adicionar
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-blue-900 dark:text-slate-100">Contas Bancárias</h2>
-          <p className="text-blue-500 dark:text-slate-400 mt-1">Gerencie suas contas e cartões</p>
+          <p className="text-blue-500 dark:text-slate-400 mt-1">Bancos, contas e cartões organizados</p>
         </div>
+        <Button onClick={() => { setIsAddingBank(true); }} variant="secondary">
+          <Icons.Plus className="w-4 h-4" /> Novo Banco
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {accounts.map(acc => {
-          const Icon = Icons[acc.icon as IconName] || Icons.Landmark;
-          const currentBalance = transactions
-            .filter(t => t.accountId === acc.id)
-            .reduce((accBalance, t) => {
-              if (acc.type === 'credit') {
-                return t.type === 'expense' ? accBalance + t.amount : accBalance - t.amount;
-              }
-              return t.type === 'income' ? accBalance + t.amount : accBalance - t.amount;
-            }, acc.balance);
+      {/* Add bank form */}
+      {isAddingBank && (
+        <Card className="border-none shadow-lg bg-white dark:bg-slate-900">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-blue-900 dark:text-slate-100">Novo Banco / Instituição</h3>
+            <button onClick={() => setIsAddingBank(false)} className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800">
+              <Icons.X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="space-y-4">
+            <Input label="Nome" placeholder="Ex: Nubank, Itaú, XP..." value={newBank.name} onChange={e => setNewBank({ ...newBank, name: e.target.value })} />
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-blue-900/70 dark:text-slate-400">Ícone</label>
+              <div className="flex flex-wrap gap-2">
+                {BANK_ICONS.map(icon => {
+                  const Ic = Icons[icon];
+                  return Ic ? (
+                    <button
+                      key={icon}
+                      onClick={() => setNewBank({ ...newBank, icon })}
+                      className={cn('w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all', newBank.icon === icon ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600' : 'border-blue-100 dark:border-slate-700 text-blue-400 dark:text-slate-500 hover:border-blue-300 dark:hover:border-slate-500')}
+                    >
+                      <Ic className="w-5 h-5" />
+                    </button>
+                  ) : null;
+                })}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-blue-900/70 dark:text-slate-400">Cor</label>
+              <div className="flex flex-wrap gap-2">
+                {BANK_COLORS.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setNewBank({ ...newBank, color: c })}
+                    className={cn('w-8 h-8 rounded-full border-4 transition-transform hover:scale-110', newBank.color === c ? 'border-blue-900 dark:border-white scale-110' : 'border-transparent')}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+            <Button className="w-full" onClick={handleAddBank}>
+              <Icons.Plus className="w-4 h-4" /> Criar Banco
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Bank cards */}
+      <div className="space-y-4">
+        {banks.map(bank => {
+          const bankAccounts = accounts.filter(a => a.bankId === bank.id);
+          const BankIcon = Icons[bank.icon as IconName] || Icons.Landmark;
+          const totalBalance = bankAccounts
+            .filter(a => a.type !== 'credit')
+            .reduce((s, a) => s + transactions.filter(t => t.accountId === a.id).reduce((b, t) => t.type === 'income' ? b + t.amount : b - t.amount, a.balance), 0);
 
           return (
-            <Card key={acc.id} className="p-5 border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: acc.color }} />
-              <div className="flex items-start justify-between">
+            <Card key={bank.id} className="border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden group">
+              {/* Bank header */}
+              <div className="flex items-center justify-between pb-4 mb-2 border-b border-blue-50 dark:border-slate-700/50">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm" style={{ backgroundColor: `${acc.color}15`, color: acc.color }}>
-                    <Icon className="w-5 h-5" />
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm" style={{ backgroundColor: `${bank.color}20`, color: bank.color }}>
+                    <BankIcon className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-blue-900 dark:text-slate-100">{acc.name}</h3>
-                    <p className="text-xs text-blue-500 dark:text-slate-400 font-medium">{typeLabels[acc.type]}</p>
+                    <h3 className="font-bold text-blue-900 dark:text-slate-100">{bank.name}</h3>
+                    <p className="text-xs text-blue-500 dark:text-slate-400">{bankAccounts.length} {bankAccounts.length === 1 ? 'conta' : 'contas'} · Saldo total: <span className="font-semibold text-emerald-600">{formatCurrency(totalBalance)}</span></p>
                   </div>
                 </div>
-                <button onClick={() => handleDelete(acc.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl opacity-0 group-hover:opacity-100 transition-all">
+                <button
+                  onClick={() => handleDeleteBank(bank.id)}
+                  className="p-2 text-blue-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                  title="Remover banco"
+                >
                   <Icons.Trash2 className="w-4 h-4" />
                 </button>
               </div>
-              <div className="mt-4 pt-4 border-t border-blue-100/50 dark:border-slate-700/50">
-                {acc.type === 'credit' ? (
-                  <>
-                    <p className="text-sm text-blue-500 dark:text-slate-400 mb-1">Fatura Atual</p>
-                    <p className="text-2xl font-bold tracking-tight text-blue-800 dark:text-slate-100">{formatCurrency(Math.abs(currentBalance))}</p>
-                    {acc.creditLimit && (
-                      <div className="mt-2 flex justify-between text-xs font-medium">
-                        <span className="text-blue-500 dark:text-slate-400">Limite Disponível</span>
-                        <span className="text-emerald-600">{formatCurrency(acc.creditLimit - Math.abs(currentBalance))}</span>
-                      </div>
-                    )}
-                    {(acc.closingDay || acc.dueDay) && (
-                      <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-blue-100/50 dark:border-slate-700/50">
-                        {acc.closingDay && (
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 dark:text-slate-500 mb-0.5">Fechamento</p>
-                            <p className="text-sm font-bold text-blue-700 dark:text-blue-400">Dia {acc.closingDay}</p>
-                          </div>
-                        )}
-                        {acc.dueDay && (
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 dark:text-slate-500 mb-0.5">Vencimento</p>
-                            <p className="text-sm font-bold text-blue-700 dark:text-blue-400">Dia {acc.dueDay}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {acc.closingDay && (
-                      <div className="mt-4 p-3 rounded-2xl bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100/50 dark:border-blue-800/50 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 shrink-0">
-                          <Icons.TrendingUp className="w-4 h-4" />
+
+              {/* Accounts list */}
+              <div className="space-y-2">
+                {bankAccounts.map(acc => {
+                  const Icon = Icons[acc.icon as IconName] || Icons.CreditCard;
+                  const currentBalance = transactions
+                    .filter(t => t.accountId === acc.id)
+                    .reduce((b, t) => acc.type === 'credit'
+                      ? (t.type === 'expense' ? b + t.amount : b - t.amount)
+                      : (t.type === 'income' ? b + t.amount : b - t.amount),
+                      acc.balance);
+
+                  return (
+                    <div key={acc.id} className="flex items-center justify-between p-3 rounded-xl bg-blue-50/40 dark:bg-slate-800/40 group/acc hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${bank.color}15`, color: bank.color }}>
+                          <Icon className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Melhor dia para compra</p>
-                          <p className="text-sm font-bold text-blue-700 dark:text-blue-400">Dia {acc.closingDay + 1 > 31 ? 1 : acc.closingDay + 1}</p>
+                          <p className="text-sm font-semibold text-blue-900 dark:text-slate-100">{acc.name}</p>
+                          <p className="text-xs text-blue-400 dark:text-slate-500">{typeLabels[acc.type]}</p>
                         </div>
                       </div>
-                    )}
-                  </>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          {acc.type === 'credit' ? (
+                            <>
+                              <p className="text-sm font-bold text-blue-800 dark:text-slate-100">{formatCurrency(Math.abs(currentBalance))}</p>
+                              {acc.creditLimit && <p className="text-[10px] text-blue-400 dark:text-slate-500">Limite: {formatCurrency(acc.creditLimit)}</p>}
+                              {(acc.closingDay || acc.dueDay) && (
+                                <p className="text-[10px] text-blue-400 dark:text-slate-500">
+                                  {acc.closingDay && `Fecha dia ${acc.closingDay}`}{acc.closingDay && acc.dueDay && ' · '}{acc.dueDay && `Vence dia ${acc.dueDay}`}
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-sm font-bold text-blue-900 dark:text-slate-100">{formatCurrency(currentBalance)}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleDeleteAccount(acc.id)}
+                          className="p-1.5 text-blue-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg opacity-0 group-hover/acc:opacity-100 transition-all"
+                        >
+                          <Icons.Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Add account form or button */}
+                {addingAccTo === bank.id ? (
+                  <AccountForm bankId={bank.id} bankColor={bank.color} />
                 ) : (
-                  <>
-                    <p className="text-sm text-blue-500 dark:text-slate-400 mb-1">Saldo Atual</p>
-                    <p className="text-2xl font-bold tracking-tight text-blue-900 dark:text-slate-100">{formatCurrency(currentBalance)}</p>
-                  </>
+                  <button
+                    onClick={() => { setAddingAccTo(bank.id); setNewAcc({ ...EMPTY_ACC }); }}
+                    className="w-full flex items-center gap-2 p-3 rounded-xl border border-dashed border-blue-200 dark:border-slate-600 text-blue-400 dark:text-slate-500 hover:border-blue-400 dark:hover:border-slate-400 hover:text-blue-600 dark:hover:text-slate-300 hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-all text-sm font-medium"
+                    style={{ borderColor: `${bank.color}50` }}
+                  >
+                    <Icons.Plus className="w-4 h-4" style={{ color: bank.color }} />
+                    <span style={{ color: bank.color }}>Adicionar conta ou cartão</span>
+                  </button>
                 )}
               </div>
             </Card>
           );
         })}
-
-        {isAdding ? (
-          <Card className="p-6 border-none shadow-lg bg-white dark:bg-slate-900 space-y-6">
-            <div className="flex items-center justify-between border-b border-blue-50 dark:border-slate-700 pb-4">
-              <h3 className="text-lg font-bold text-blue-900 dark:text-slate-100 tracking-tight">Nova Conta</h3>
-              <button onClick={() => setIsAdding(false)} className="p-2 text-blue-400 hover:text-blue-900 dark:hover:text-slate-100 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-full transition-colors">
-                <Icons.X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <Input 
-                label="Nome da conta" 
-                placeholder="Ex: Nubank, Itaú..." 
-                value={newAcc.name} 
-                onChange={e => setNewAcc({ ...newAcc, name: e.target.value })} 
-                className="bg-white" 
-              />
-              
-              <RadioGroup 
-                label="Tipo de Conta"
-                value={newAcc.type} 
-                onChange={val => setNewAcc({ ...newAcc, type: val as any })}
-                options={[
-                  { value: 'checking', label: 'Corrente' },
-                  { value: 'savings', label: 'Poupança' },
-                  { value: 'investment', label: 'Investimentos' },
-                  { value: 'credit', label: 'Cartão de Crédito' }
-                ]}
-              />
-
-              <Input 
-                label={newAcc.type === 'credit' ? "Fatura atual" : "Saldo inicial"} 
-                type="number" 
-                placeholder="0,00" 
-                value={newAcc.balance} 
-                onChange={e => setNewAcc({ ...newAcc, balance: e.target.value })} 
-                className="bg-white" 
-              />
-              
-              {newAcc.type === 'investment' && (
-                <Select 
-                  label="Tipo de Investimento"
-                  value={newAcc.investmentType} 
-                  onChange={e => setNewAcc({ ...newAcc, investmentType: e.target.value as any })}
-                  options={[
-                    { value: 'cdb', label: 'CDB / Renda Fixa' },
-                    { value: 'stock', label: 'Ações' },
-                    { value: 'fund', label: 'Fundos de Investimento' },
-                    { value: 'fii', label: 'FIIs' },
-                    { value: 'other', label: 'Outros' }
-                  ]}
-                  className="bg-white"
-                />
-              )}
-
-              {newAcc.type === 'credit' && (
-                <div className="space-y-4 pt-2 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
-                  <Input 
-                    label="Limite de crédito" 
-                    type="number" 
-                    placeholder="0,00" 
-                    value={newAcc.creditLimit} 
-                    onChange={e => setNewAcc({ ...newAcc, creditLimit: e.target.value })} 
-                    className="bg-white" 
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input 
-                      label="Dia fechamento" 
-                      type="number" 
-                      placeholder="Dia" 
-                      value={newAcc.closingDay} 
-                      onChange={e => setNewAcc({ ...newAcc, closingDay: e.target.value })} 
-                      className="bg-white" 
-                    />
-                    <Input 
-                      label="Dia vencimento" 
-                      type="number" 
-                      placeholder="Dia" 
-                      value={newAcc.dueDay} 
-                      onChange={e => setNewAcc({ ...newAcc, dueDay: e.target.value })} 
-                      className="bg-white" 
-                    />
-                  </div>
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-blue-900/70 tracking-tight">Cor da Conta</label>
-                <div className="flex gap-3">
-                  <div className="relative w-14 h-11 rounded-xl overflow-hidden border-2 border-blue-100 shrink-0 shadow-sm transition-transform hover:scale-105">
-                    <input 
-                      type="color" 
-                      className="absolute -top-2 -left-2 w-20 h-20 cursor-pointer border-none p-0" 
-                      value={newAcc.color} 
-                      onChange={e => setNewAcc({ ...newAcc, color: e.target.value })} 
-                    />
-                  </div>
-                  <Button className="flex-1 h-11 font-bold text-sm tracking-tight shadow-md shadow-blue-200" onClick={handleAdd}>
-                    Adicionar Conta
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-        ) : (
-          <button 
-            onClick={() => setIsAdding(true)}
-            className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-blue-200 dark:border-slate-600 text-blue-400 dark:text-slate-500 hover:border-blue-400 dark:hover:border-slate-400 hover:text-blue-600 dark:hover:text-slate-300 hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-all duration-300 min-h-[100px]"
-          >
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <Icons.Plus className="w-5 h-5" />
-            </div>
-            <span className="font-medium text-sm">Nova Conta</span>
-          </button>
-        )}
       </div>
+
+      {banks.length === 0 && !isAddingBank && (
+        <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-blue-100 dark:bg-slate-800 flex items-center justify-center">
+            <Icons.Landmark className="w-8 h-8 text-blue-400 dark:text-slate-500" />
+          </div>
+          <div>
+            <p className="font-semibold text-blue-900 dark:text-slate-100">Nenhum banco cadastrado</p>
+            <p className="text-sm text-blue-400 dark:text-slate-500 mt-1">Adicione um banco para organizar suas contas e cartões</p>
+          </div>
+          <Button onClick={() => setIsAddingBank(true)}>
+            <Icons.Plus className="w-4 h-4" /> Adicionar Banco
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
