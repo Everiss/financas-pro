@@ -1,0 +1,17 @@
+{
+  "name": "financas-pro",
+  "version": "1.0.0",
+  "description": "Um aplicativo moderno e intuitivo para controle de finanças pessoais, com análise de dados por Inteligência Artificial e sincronização em tempo real.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently --names \"BACK,FRONT\" --prefix-colors \"blue,green\" \"npm run dev:back\" \"npm run dev:front\"",
+    "dev:back": "npm --prefix financas-back run start:dev",
+    "dev:front": "npm --prefix financas-front run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -1,0 +1,185 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}
+    // Fields:
+    //   - displayName: string (required)
+    //   - email: string (required, email format)
+    //   - currency: string (optional)
+    //
+    // Collection: /users/{userId}/transactions/{transactionId}
+    // Fields:
+    //   - amount: number (required, positive or negative)
+    //   - type: string (required, 'income' or 'expense')
+    //   - category: string (required)
+    //   - date: timestamp (required)
+    //   - description: string (optional)
+    //   - accountId: string (optional)
+    //   - userId: string (required, matches owner)
+    //
+    // Collection: /users/{userId}/categories/{categoryId}
+    // Fields:
+    //   - name: string (required)
+    //   - icon: string (required)
+    //   - color: string (required)
+    //   - userId: string (required, matches owner)
+    //
+    // Collection: /users/{userId}/accounts/{accountId}
+    // Fields:
+    //   - name: string (required)
+    //   - type: string (required, 'checking', 'savings', 'investment', 'credit')
+    //   - balance: number (required)
+    //   - color: string (required)
+    //   - icon: string (required)
+    //   - userId: string (required, matches owner)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['displayName', 'email']) &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             isValidEmail(data.email);
+    }
+
+    function isValidTransaction(data, userId) {
+      return hasRequiredFields(['amount', 'type', 'category', 'date', 'userId']) &&
+             data.amount is number &&
+             data.type in ['income', 'expense'] &&
+             data.category is string &&
+             data.date is timestamp &&
+             data.userId == userId &&
+             (!('description' in data) || (data.description is string && data.description.size() < 500)) &&
+             (!('accountId' in data) || (data.accountId is string && data.accountId.size() > 0 && data.accountId.size() < 100)) &&
+             (!('paymentMethod' in data) || (data.paymentMethod in ['debit', 'credit']));
+    }
+
+    function isValidCategory(data, userId) {
+      return hasRequiredFields(['name', 'icon', 'color', 'userId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             data.icon is string &&
+             data.color is string && data.color.matches("^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$") &&
+             data.userId == userId &&
+             (!('budget' in data) || (data.budget is number && data.budget >= 0));
+    }
+
+    function isValidReminder(data, userId) {
+      return hasRequiredFields(['title', 'amount', 'type', 'category', 'dueDate', 'frequency', 'userId']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.amount is number &&
+             data.type in ['income', 'expense'] &&
+             data.category is string &&
+             data.dueDate is timestamp &&
+             data.frequency in ['once', 'daily', 'weekly', 'monthly', 'yearly'] &&
+             data.userId == userId;
+    }
+
+    function isValidBankAccount(data, userId) {
+      return hasRequiredFields(['name', 'type', 'balance', 'color', 'icon', 'userId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             data.type in ['checking', 'savings', 'investment', 'credit'] &&
+             data.balance is number &&
+             data.color is string && data.color.matches("^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$") &&
+             data.icon is string &&
+             data.userId == userId &&
+             (!('creditLimit' in data) || (data.creditLimit is number && data.creditLimit >= 0)) &&
+             (!('closingDay' in data) || (data.closingDay is number && data.closingDay >= 1 && data.closingDay <= 31)) &&
+             (!('dueDay' in data) || (data.dueDay is number && data.dueDay >= 1 && data.dueDay <= 31));
+    }
+
+    function isValidGoal(data, userId) {
+      return hasRequiredFields(['name', 'targetAmount', 'currentAmount', 'category', 'userId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.targetAmount is number && data.targetAmount > 0 &&
+             data.currentAmount is number && data.currentAmount >= 0 &&
+             data.category in ['Viagem', 'Casa', 'Carro', 'Educação', 'Reserva de Emergência', 'Aposentadoria', 'Outros'] &&
+             data.userId == userId &&
+             (!('deadline' in data) || (data.deadline is timestamp || data.deadline == null)) &&
+             (!('color' in data) || (data.color is string && data.color.matches("^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"))) &&
+             (!('icon' in data) || (data.icon is string)) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTransaction(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidTransaction(request.resource.data, userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCategory(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidCategory(request.resource.data, userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /reminders/{reminderId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidReminder(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidReminder(request.resource.data, userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /accounts/{accountId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidBankAccount(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidBankAccount(request.resource.data, userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /goals/{goalId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidGoal(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidGoal(request.resource.data, userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

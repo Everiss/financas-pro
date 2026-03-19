@@ -1,0 +1,38 @@
+# Dependências
+node_modules/
+financas-back/node_modules/
+financas-front/node_modules/
+
+# Build
+dist/
+financas-back/dist/
+financas-front/dist/
+
+# Variáveis de ambiente (NUNCA commitar)
+.env
+financas-back/.env
+financas-front/.env
+
+# Prisma
+financas-back/prisma/migrations/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Cache
+.cache/
+.vite/
+financas-front/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

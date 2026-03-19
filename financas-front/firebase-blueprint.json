@@ -1,0 +1,118 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction (income or expense).",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "description": "The amount of the transaction." },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "The type of transaction." },
+        "category": { "type": "string", "description": "The category ID of the transaction." },
+        "date": { "type": "string", "format": "date-time", "description": "The date and time of the transaction." },
+        "description": { "type": "string", "description": "A brief description of the transaction." },
+        "accountId": { "type": "string", "description": "The ID of the bank account associated with this transaction." },
+        "paymentMethod": { "type": "string", "enum": ["debit", "credit"], "description": "The payment method used." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this transaction." }
+      },
+      "required": ["amount", "type", "category", "date", "userId"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A category for transactions.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the category." },
+        "icon": { "type": "string", "description": "The icon name for the category." },
+        "color": { "type": "string", "description": "The hex color code for the category." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this category." },
+        "budget": { "type": "number", "description": "Optional monthly budget goal for this category." }
+      },
+      "required": ["name", "icon", "color", "userId"]
+    },
+    "Reminder": {
+      "title": "Reminder",
+      "description": "A reminder for future or recurring transactions.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the reminder." },
+        "amount": { "type": "number", "description": "The amount of the transaction." },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "The type of transaction." },
+        "category": { "type": "string", "description": "The category ID." },
+        "dueDate": { "type": "string", "format": "date-time", "description": "The next due date." },
+        "frequency": { "type": "string", "enum": ["once", "daily", "weekly", "monthly", "yearly"], "description": "Recurrence frequency." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this reminder." }
+      },
+      "required": ["title", "amount", "type", "category", "dueDate", "frequency", "userId"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User preferences and profile information.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "currency": { "type": "string", "description": "The user's preferred currency (e.g., BRL, USD)." }
+      },
+      "required": ["displayName", "email"]
+    },
+    "BankAccount": {
+      "title": "BankAccount",
+      "description": "A user's bank account.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the bank account." },
+        "type": { "type": "string", "enum": ["checking", "savings", "investment", "credit"], "description": "The type of account." },
+        "balance": { "type": "number", "description": "The current balance of the account." },
+        "creditLimit": { "type": "number", "description": "The credit limit of the credit card." },
+        "closingDay": { "type": "number", "description": "The day of the month the credit card bill closes." },
+        "dueDay": { "type": "number", "description": "The day of the month the credit card bill is due." },
+        "color": { "type": "string", "description": "The hex color code for the account." },
+        "icon": { "type": "string", "description": "The icon name for the account." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this account." }
+      },
+      "required": ["name", "type", "balance", "color", "icon", "userId"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "A financial goal (e.g., buying a car, travel).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the goal." },
+        "targetAmount": { "type": "number", "description": "The target amount to reach." },
+        "currentAmount": { "type": "number", "description": "The current amount saved towards the goal." },
+        "deadline": { "type": "string", "format": "date-time", "description": "The target date to reach the goal." },
+        "category": { "type": "string", "enum": ["car", "travel", "house", "emergency", "education", "other"], "description": "The classification of the goal." },
+        "color": { "type": "string", "description": "The hex color code for the goal." },
+        "icon": { "type": "string", "description": "The icon name for the goal." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this goal." }
+      },
+      "required": ["name", "targetAmount", "currentAmount", "category", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document."
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "A user's financial transactions."
+    },
+    "/users/{userId}/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "A user's custom transaction categories."
+    },
+    "/users/{userId}/reminders/{reminderId}": {
+      "schema": "Reminder",
+      "description": "A user's transaction reminders."
+    },
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": "BankAccount",
+      "description": "A user's bank accounts."
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "A user's financial goals."
+    }
+  }
+}

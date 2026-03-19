@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  firebaseUid String   @unique @map("firebase_uid")
+  displayName String   @map("display_name")
+  email       String   @unique
+  photoURL    String?  @map("photo_url") @db.Text
+  currency    String   @default("BRL")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  accounts     BankAccount[]
+  categories   Category[]
+  transactions Transaction[]
+  reminders    Reminder[]
+  goals        Goal[]
+
+  @@map("users")
+}
+
+model BankAccount {
+  id             String         @id @default(uuid())
+  name           String
+  type           AccountType
+  balance        Decimal        @default(0) @db.Decimal(15, 2)
+  color          String         @default("#3b82f6")
+  icon           String         @default("Wallet")
+  creditLimit    Decimal?       @map("credit_limit") @db.Decimal(15, 2)
+  closingDay     Int?           @map("closing_day")
+  dueDay         Int?           @map("due_day")
+  investmentType InvestmentType? @map("investment_type")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  userId       String        @map("user_id")
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  reminders    Reminder[]
+
+  @@map("bank_accounts")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  icon      String   @default("MoreHorizontal")
+  color     String   @default("#71717a")
+  budget    Decimal? @db.Decimal(15, 2)
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId       String?       @map("user_id")
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  reminders    Reminder[]
+
+  @@map("categories")
+}
+
+model Transaction {
+  id            String         @id @default(uuid())
+  amount        Decimal        @db.Decimal(15, 2)
+  type          TransactionType
+  description   String?        @db.Text
+  date          DateTime
+  paymentMethod PaymentMethod? @map("payment_method")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  userId     String       @map("user_id")
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId  String?      @map("account_id")
+  account    BankAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  categoryId String?      @map("category_id")
+  category   Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([userId, type])
+  @@map("transactions")
+}
+
+model Reminder {
+  id        String          @id @default(uuid())
+  title     String
+  amount    Decimal         @db.Decimal(15, 2)
+  type      TransactionType
+  dueDate   DateTime        @map("due_date")
+  frequency FrequencyType
+  notes     String?         @db.Text
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  userId     String       @map("user_id")
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId  String?      @map("account_id")
+  account    BankAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  categoryId String?      @map("category_id")
+  category   Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, dueDate])
+  @@map("reminders")
+}
+
+model Goal {
+  id            String       @id @default(uuid())
+  name          String
+  targetAmount  Decimal      @map("target_amount") @db.Decimal(15, 2)
+  currentAmount Decimal      @default(0) @map("current_amount") @db.Decimal(15, 2)
+  deadline      DateTime?
+  category      GoalCategory
+  color         String?      @default("#3b82f6")
+  icon          String?      @default("Target")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("goals")
+}
+
+// --- Enums ---
+
+enum AccountType {
+  checking
+  savings
+  investment
+  credit
+}
+
+enum InvestmentType {
+  cdb
+  stock
+  fund
+  fii
+  other
+}
+
+enum TransactionType {
+  income
+  expense
+}
+
+enum PaymentMethod {
+  debit
+  credit
+}
+
+enum FrequencyType {
+  once
+  daily
+  weekly
+  monthly
+  yearly
+}
+
+enum GoalCategory {
+  Viagem
+  Casa
+  Carro
+  Educacao
+  ReservaDeEmergencia
+  Aposentadoria
+  Outros
+}
