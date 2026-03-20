@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { LandingPage } from './LandingPage';
+import { PlanProvider, usePlan } from './contexts/PlanContext';
+import { PlanGate, PlanBadge, UpgradeModal } from './components/PlanGate';
 import { PluggyConnect } from 'react-pluggy-connect';
 import {
   auth,
@@ -462,6 +464,7 @@ export default function App() {
   }
 
   return (
+    <PlanProvider authenticated={!!user}>
     <ErrorBoundary>
       <div
         className="min-h-screen bg-blue-50/30 dark:bg-slate-950 text-blue-900 dark:text-slate-100 font-sans"
@@ -527,7 +530,9 @@ export default function App() {
               <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon="Landmark" label="Contas" />
               <NavButton active={activeTab === 'goals'} onClick={() => setActiveTab('goals')} icon="Target" label="Metas" />
               <NavButton active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon="List" label="Histórico" />
-              <NavButton active={activeTab === 'openfinance'} onClick={() => setActiveTab('openfinance')} icon="Zap" label="Open Finance" />
+              <PlanGate feature="openFinance" showLocked={true}>
+                <NavButton active={activeTab === 'openfinance'} onClick={() => setActiveTab('openfinance')} icon="Zap" label="Open Finance" />
+              </PlanGate>
               <NavButton active={activeTab === 'planos'} onClick={() => setActiveTab('planos')} icon="Sparkles" label="Planos" />
             </div>
 
@@ -536,7 +541,9 @@ export default function App() {
                 <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border border-blue-200 dark:border-slate-600" alt="" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate dark:text-slate-100">{user.displayName}</p>
-                  <p className="text-xs text-blue-500 dark:text-slate-400 truncate">{user.email}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <PlanBadge />
+                  </div>
                 </div>
                 <button
                   onClick={() => setDarkMode(!darkMode)}
@@ -601,10 +608,16 @@ export default function App() {
                   <Icons.ArrowUpRight className="w-4 h-4 rotate-45" />
                   Transferência
                 </Button>
-                <Button onClick={() => setIsAddModalOpen(true)} className="shadow-lg shadow-blue-900/10">
-                  <Icons.Plus className="w-5 h-5" />
-                  <span className="hidden sm:inline">Nova Transação</span>
-                </Button>
+                <PlanGate limit="transactionsPerMonth" current={transactions.filter(t => {
+                  const d = t.date.toDate();
+                  const now = new Date();
+                  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+                }).length}>
+                  <Button onClick={() => setIsAddModalOpen(true)} className="shadow-lg shadow-blue-900/10">
+                    <Icons.Plus className="w-5 h-5" />
+                    <span className="hidden sm:inline">Nova Transação</span>
+                  </Button>
+                </PlanGate>
               </div>
             </header>
 
@@ -644,7 +657,9 @@ export default function App() {
                   <FluxoMes transactions={transactions} month={dashboardMonth} />
 
                   {/* Bloco 3 — Insights IA */}
-                  <AIInsights transactions={transactions} />
+                  <PlanGate feature="ai">
+                    <AIInsights transactions={transactions} />
+                  </PlanGate>
 
                   {/* Bloco 4 — Estratégia de compra */}
                   <CreditStrategy accounts={accounts} />
@@ -759,6 +774,7 @@ export default function App() {
         </AnimatePresence>
       </div>
     </ErrorBoundary>
+    </PlanProvider>
   );
 }
 
@@ -1458,10 +1474,12 @@ function TransactionManager({ transactions, categories, accounts, onRefresh }: {
           <Button variant={filter === 'all' ? 'primary' : 'secondary'} onClick={() => setFilter('all')} className="px-3 py-2 text-xs">Tudo</Button>
           <Button variant={filter === 'income' ? 'primary' : 'secondary'} onClick={() => setFilter('income')} className="px-3 py-2 text-xs">Receitas</Button>
           <Button variant={filter === 'expense' ? 'primary' : 'secondary'} onClick={() => setFilter('expense')} className="px-3 py-2 text-xs">Despesas</Button>
-          <Button variant="secondary" onClick={handleExport} className="px-3 py-2 text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
-            <Icons.Download className="w-3.5 h-3.5" />
-            Exportar Excel
-          </Button>
+          <PlanGate feature="exportExcel">
+            <Button variant="secondary" onClick={handleExport} className="px-3 py-2 text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
+              <Icons.Download className="w-3.5 h-3.5" />
+              Exportar Excel
+            </Button>
+          </PlanGate>
         </div>
       </div>
 
@@ -3393,14 +3411,16 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
                     )}
                   </div>
                 ) : (
-                  <button
-                    onClick={() => { setAddingAccTo(bank.id); setNewAcc({ ...EMPTY_ACC }); }}
-                    className="w-full flex items-center gap-2 p-3 rounded-xl border border-dashed border-blue-200 dark:border-slate-600 text-blue-400 dark:text-slate-500 hover:border-blue-400 dark:hover:border-slate-400 hover:text-blue-600 dark:hover:text-slate-300 hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-all text-sm font-medium"
-                    style={{ borderColor: `${bank.color}50` }}
-                  >
-                    <Icons.Plus className="w-4 h-4" style={{ color: bank.color }} />
-                    <span style={{ color: bank.color }}>Adicionar conta ou cartão</span>
-                  </button>
+                  <PlanGate limit="accounts" current={accounts.length}>
+                    <button
+                      onClick={() => { setAddingAccTo(bank.id); setNewAcc({ ...EMPTY_ACC }); }}
+                      className="w-full flex items-center gap-2 p-3 rounded-xl border border-dashed border-blue-200 dark:border-slate-600 text-blue-400 dark:text-slate-500 hover:border-blue-400 dark:hover:border-slate-400 hover:text-blue-600 dark:hover:text-slate-300 hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-all text-sm font-medium"
+                      style={{ borderColor: `${bank.color}50` }}
+                    >
+                      <Icons.Plus className="w-4 h-4" style={{ color: bank.color }} />
+                      <span style={{ color: bank.color }}>Adicionar conta ou cartão</span>
+                    </button>
+                  </PlanGate>
                 )}
               </div>
             </Card>
@@ -4012,15 +4032,17 @@ function TransactionModal({ onClose, categories, accounts, transactions, userId,
         <div className="p-6 border-b border-blue-100 dark:border-slate-700 flex items-center justify-between">
           <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100 tracking-tight">Nova Transação</h3>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Enviar comprovante"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors border border-violet-200 dark:border-violet-800"
-            >
-              <Icons.Sparkles className="w-3.5 h-3.5" />
-              IA: Ler comprovante
-            </button>
+            <PlanGate feature="ai">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Enviar comprovante"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors border border-violet-200 dark:border-violet-800"
+              >
+                <Icons.Sparkles className="w-3.5 h-3.5" />
+                IA: Ler comprovante
+              </button>
+            </PlanGate>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleReceiptChange} />
             <button onClick={onClose} className="p-2 text-blue-400 hover:text-blue-900 dark:hover:text-slate-100 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-full transition-colors">
               <Icons.X className="w-5 h-5" />
@@ -4275,23 +4297,27 @@ function GoalsView({ goals, userId, transactions, accounts, categories, onRefres
           <p className="text-sm text-blue-500 dark:text-slate-400">Planeje e acompanhe seus objetivos financeiros.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={getAiHelp} disabled={loadingAi || goals.length === 0} className="relative overflow-hidden group">
-            {loadingAi && (
-              <motion.div 
-                layoutId="ai-loading"
-                className="absolute inset-0 bg-blue-600/10"
-                initial={{ x: '-100%' }}
-                animate={{ x: '100%' }}
-                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-              />
-            )}
-            <Icons.Sparkles className={cn("w-4 h-4 relative z-10", loadingAi && "animate-spin text-blue-600")} />
-            <span className="relative z-10">{loadingAi ? 'Analisando seu Perfil...' : 'Consultar IA'}</span>
-          </Button>
-          <Button onClick={() => { setEditingGoal(null); setIsModalOpen(true); }}>
-            <Icons.Plus className="w-4 h-4" />
-            Nova Meta
-          </Button>
+          <PlanGate feature="ai">
+            <Button variant="secondary" onClick={getAiHelp} disabled={loadingAi || goals.length === 0} className="relative overflow-hidden group">
+              {loadingAi && (
+                <motion.div
+                  layoutId="ai-loading"
+                  className="absolute inset-0 bg-blue-600/10"
+                  initial={{ x: '-100%' }}
+                  animate={{ x: '100%' }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                />
+              )}
+              <Icons.Sparkles className={cn("w-4 h-4 relative z-10", loadingAi && "animate-spin text-blue-600")} />
+              <span className="relative z-10">{loadingAi ? 'Analisando seu Perfil...' : 'Consultar IA'}</span>
+            </Button>
+          </PlanGate>
+          <PlanGate limit="goals" current={goals.length}>
+            <Button onClick={() => { setEditingGoal(null); setIsModalOpen(true); }}>
+              <Icons.Plus className="w-4 h-4" />
+              Nova Meta
+            </Button>
+          </PlanGate>
         </div>
       </div>
 
