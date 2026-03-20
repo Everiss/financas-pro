@@ -17,6 +17,11 @@ export class AiService {
   }
 
   async getFinancialInsights(userId: string) {
+    const cache = await this.prisma.aiInsightCache.findUnique({ where: { userId } });
+    if (cache && !cache.isDirty && cache.insightsJson) {
+      return JSON.parse(cache.insightsJson);
+    }
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -60,10 +65,23 @@ Retorne apenas os 3 insights em formato JSON: [{"title": "...", "description": "
 
     const text = message.content[0].type === 'text' ? message.content[0].text : '[]';
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    return JSON.parse(jsonMatch ? jsonMatch[0] : '[]');
+    const result = JSON.parse(jsonMatch ? jsonMatch[0] : '[]');
+
+    await this.prisma.aiInsightCache.upsert({
+      where: { userId },
+      create: { userId, insightsJson: JSON.stringify(result), isDirty: false },
+      update: { insightsJson: JSON.stringify(result), isDirty: false },
+    });
+
+    return result;
   }
 
   async getGoalsStrategy(userId: string) {
+    const cache = await this.prisma.aiInsightCache.findUnique({ where: { userId } });
+    if (cache && !cache.isDirty && cache.strategyJson) {
+      return JSON.parse(cache.strategyJson);
+    }
+
     const [goals, transactions] = await Promise.all([
       this.prisma.goal.findMany({ where: { userId } }),
       this.prisma.transaction.findMany({
@@ -96,6 +114,14 @@ Retorne um JSON com o seguinte formato exato:
 
     const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    return JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+    const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+
+    await this.prisma.aiInsightCache.upsert({
+      where: { userId },
+      create: { userId, strategyJson: JSON.stringify(result), isDirty: false },
+      update: { strategyJson: JSON.stringify(result), isDirty: false },
+    });
+
+    return result;
   }
 }

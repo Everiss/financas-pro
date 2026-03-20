@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AiCacheService } from '../ai/ai-cache.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { QueryTransactionDto } from './dto/query-transaction.dto';
@@ -24,7 +25,10 @@ function balanceDelta(
 
 @Injectable()
 export class TransactionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private aiCache: AiCacheService,
+  ) {}
 
   async findAll(userId: string, query: QueryTransactionDto) {
     const where: Prisma.TransactionWhereInput = { userId };
@@ -81,6 +85,7 @@ export class TransactionsService {
         }
       }
 
+      await this.aiCache.invalidate(userId);
       return transaction;
     });
   }
@@ -132,6 +137,7 @@ export class TransactionsService {
         }
       }
 
+      await this.aiCache.invalidate(userId);
       return updated;
     });
   }
@@ -155,6 +161,7 @@ export class TransactionsService {
         });
       }
 
+      await this.aiCache.invalidate(userId);
       return { message: 'Transação removida com sucesso.' };
     });
   }

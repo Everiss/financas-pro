@@ -17,12 +17,13 @@ model User {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  banks        Bank[]
-  accounts     BankAccount[]
-  categories   Category[]
-  transactions Transaction[]
-  reminders    Reminder[]
-  goals        Goal[]
+  banks           Bank[]
+  accounts        BankAccount[]
+  categories      Category[]
+  transactions    Transaction[]
+  reminders       Reminder[]
+  goals           Goal[]
+  aiInsightCache  AiInsightCache?
 
   @@map("users")
 }
@@ -134,6 +135,18 @@ model Reminder {
   @@index([accountId])
   @@index([categoryId])
   @@map("reminders")
+}
+
+model AiInsightCache {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insightsJson String?  @map("insights_json") @db.Text
+  strategyJson String?  @map("strategy_json") @db.Text
+  isDirty      Boolean  @default(true) @map("is_dirty")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("ai_insight_cache")
 }
 
 model Goal {

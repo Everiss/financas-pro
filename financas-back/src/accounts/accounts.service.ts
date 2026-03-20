@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AiCacheService } from '../ai/ai-cache.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 
 @Injectable()
 export class AccountsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private aiCache: AiCacheService,
+  ) {}
 
   async findAll(userId: string) {
     return this.prisma.bankAccount.findMany({
@@ -26,17 +30,22 @@ export class AccountsService {
   }
 
   async create(userId: string, dto: CreateAccountDto) {
-    return this.prisma.bankAccount.create({ data: { ...dto, userId } });
+    const account = await this.prisma.bankAccount.create({ data: { ...dto, userId } });
+    await this.aiCache.invalidate(userId);
+    return account;
   }
 
   async update(id: string, userId: string, dto: UpdateAccountDto) {
     await this.findOne(id, userId);
-    return this.prisma.bankAccount.update({ where: { id }, data: dto });
+    const account = await this.prisma.bankAccount.update({ where: { id }, data: dto });
+    await this.aiCache.invalidate(userId);
+    return account;
   }
 
   async remove(id: string, userId: string) {
     await this.findOne(id, userId);
     await this.prisma.bankAccount.delete({ where: { id } });
+    await this.aiCache.invalidate(userId);
     return { message: 'Conta removida com sucesso.' };
   }
 
