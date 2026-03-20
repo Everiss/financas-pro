@@ -13,7 +13,7 @@ import {
 import {
   transactionsApi, categoriesApi, accountsApi, banksApi, goalsApi, remindersApi, usersApi, auditApi, openFinanceApi, subscriptionApi,
   TransactionResponse, CategoryResponse, AccountResponse, BankResponse, GoalResponse, ReminderResponse,
-  AiGoalsStrategy, CreateTransactionPayload, AuditLogResponse, PluggyAccount, PluggyTransaction, PluggyItem, SubscriptionStatus
+  AiGoalsStrategy, CreateTransactionPayload, AuditLogResponse, PluggyAccount, PluggyTransaction, PluggyItem, SubscriptionStatus, ReceiptExtraction
 } from './services/api';
 import { Transaction, Category, UserProfile, Reminder, BankAccount, Bank, Goal } from './types';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -3915,6 +3915,63 @@ function TransactionModal({ onClose, categories, accounts, transactions, userId,
   });
   const [loading, setLoading] = useState(false);
 
+  // --- Upload de comprovante ---
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extraction, setExtraction] = useState<ReceiptExtraction | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleReceiptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReceiptFile(file);
+    setReceiptPreview(URL.createObjectURL(file));
+    setExtraction(null);
+  };
+
+  const handleExtract = async () => {
+    if (!receiptFile) return;
+    setExtracting(true);
+    try {
+      const result = await aiApi.extractReceipt(receiptFile);
+      setExtraction(result);
+      // Preenche o formulário com os dados extraídos
+      const matchedCategory = categories.find(c =>
+        c.name.toLowerCase() === result.categoryName.toLowerCase()
+      ) || categories.find(c =>
+        c.name.toLowerCase().includes(result.categoryName.toLowerCase())
+      ) || categories[0];
+
+      const validAccounts = result.type === 'expense'
+        ? (result.paymentMethod === 'credit' ? accounts.filter(a => a.type === 'credit') : accounts.filter(a => a.type !== 'credit'))
+        : accounts;
+
+      setForm(f => ({
+        ...f,
+        amount: result.amount.toFixed(2),
+        type: result.type,
+        date: result.date,
+        description: result.establishment || result.description,
+        categoryId: matchedCategory?.id || f.category,
+        category: matchedCategory?.id || f.category,
+        paymentMethod: result.paymentMethod || 'debit',
+        accountId: validAccounts[0]?.id || f.accountId,
+      }));
+    } catch (err: any) {
+      alert(err.message || 'Erro ao extrair comprovante.');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const clearReceipt = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setExtraction(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const getAccountBalance = (acc: BankAccount) => acc.balance;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -3954,10 +4011,63 @@ function TransactionModal({ onClose, categories, accounts, transactions, userId,
       >
         <div className="p-6 border-b border-blue-100 dark:border-slate-700 flex items-center justify-between">
           <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100 tracking-tight">Nova Transação</h3>
-          <button onClick={onClose} className="p-2 text-blue-400 hover:text-blue-900 dark:hover:text-slate-100 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-full transition-colors">
-            <Icons.X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Enviar comprovante"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors border border-violet-200 dark:border-violet-800"
+            >
+              <Icons.Sparkles className="w-3.5 h-3.5" />
+              IA: Ler comprovante
+            </button>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleReceiptChange} />
+            <button onClick={onClose} className="p-2 text-blue-400 hover:text-blue-900 dark:hover:text-slate-100 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+              <Icons.X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* Preview do comprovante */}
+        {receiptPreview && (
+          <div className="px-6 pt-4">
+            <div className="relative rounded-2xl overflow-hidden border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/20">
+              <div className="flex items-start gap-3 p-3">
+                <img src={receiptPreview} alt="Comprovante" className="w-20 h-20 object-cover rounded-xl shrink-0 border border-violet-200 dark:border-violet-700" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-violet-700 dark:text-violet-400 mb-1 flex items-center gap-1">
+                    <Icons.Sparkles className="w-3 h-3" /> Comprovante carregado
+                  </p>
+                  <p className="text-xs text-violet-500 dark:text-violet-500 truncate mb-2">{receiptFile?.name}</p>
+                  {extraction ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${extraction.confidence === 'high' ? 'bg-emerald-500' : extraction.confidence === 'medium' ? 'bg-amber-500' : 'bg-red-500'}`} />
+                      <span className="text-xs text-violet-600 dark:text-violet-400 font-medium">
+                        Dados extraídos ({extraction.confidence === 'high' ? 'alta' : extraction.confidence === 'medium' ? 'média' : 'baixa'} confiança) — revise o formulário
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleExtract}
+                      disabled={extracting}
+                      className="text-xs font-bold bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      {extracting ? (
+                        <><span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />Interpretando...</>
+                      ) : (
+                        <><Icons.Sparkles className="w-3 h-3" />Extrair com IA</>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <button type="button" onClick={clearReceipt} className="text-violet-400 hover:text-violet-600 p-1 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors shrink-0">
+                  <Icons.X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <RadioGroup 

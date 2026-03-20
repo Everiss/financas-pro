@@ -148,7 +148,33 @@ export interface SubscriptionStatus {
 export const aiApi = {
   getInsights: () => request<AiInsight[]>('/ai/insights', { method: 'POST' }),
   getGoalsStrategy: () => request<AiGoalsStrategy>('/ai/goals-strategy', { method: 'POST' }),
+  extractReceipt: async (file: File): Promise<ReceiptExtraction> => {
+    const token = await getToken();
+    const body = new FormData();
+    body.append('file', file);
+    const res = await fetch(`${API_URL}/ai/extract-receipt`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message ?? 'Erro na extração.');
+    }
+    return res.json();
+  },
 };
+
+export interface ReceiptExtraction {
+  amount: number;
+  type: 'income' | 'expense';
+  date: string;
+  description: string;
+  categoryName: string;
+  paymentMethod: 'debit' | 'credit';
+  establishment: string;
+  confidence: 'high' | 'medium' | 'low';
+}
 
 // --- Open Finance (Pluggy) ---
 

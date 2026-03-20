@@ -76,6 +76,65 @@ Retorne apenas os 3 insights em formato JSON: [{"title": "...", "description": "
     return result;
   }
 
+  /** Extrai dados de uma transação a partir de imagem de comprovante */
+  async extractReceipt(imageBuffer: Buffer, mimeType: string, userId: string) {
+    const categories = await this.prisma.category.findMany({
+      where: { OR: [{ userId }, { isDefault: true }] },
+      select: { name: true },
+    });
+    const categoryNames = categories.map((c) => c.name).join(', ');
+
+    const base64 = imageBuffer.toString('base64');
+
+    const message = await this.client.messages.create({
+      model: this.model,
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: mimeType as any, data: base64 },
+            },
+            {
+              type: 'text',
+              text: `Analise este comprovante/recibo financeiro e extraia as informações da transação.
+
+Categorias disponíveis no sistema: ${categoryNames}
+
+Retorne APENAS um JSON válido (sem markdown, sem explicações) com este formato exato:
+{
+  "amount": 0.00,
+  "type": "expense",
+  "date": "YYYY-MM-DD",
+  "description": "descrição curta",
+  "categoryName": "categoria mais adequada da lista acima",
+  "paymentMethod": "debit",
+  "establishment": "nome do estabelecimento ou pagador/recebedor",
+  "confidence": "high|medium|low"
+}
+
+Regras:
+- type: "expense" para pagamentos/compras, "income" para recebimentos/depósitos
+- paymentMethod: "credit" se cartão de crédito, "debit" para os demais
+- date: use a data do comprovante; se ausente, use hoje (${new Date().toISOString().split('T')[0]})
+- amount: valor numérico positivo (sem R$, sem vírgula — use ponto decimal)
+- categoryName: escolha a mais próxima da lista; use "Outros" se nenhuma se encaixar
+- confidence: "high" se todas as informações estão claras, "low" se a imagem está ruim`,
+            },
+          ],
+        },
+      ],
+    });
+
+    const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Não foi possível interpretar o comprovante.');
+
+    return JSON.parse(jsonMatch[0]);
+  }
+
   async getGoalsStrategy(userId: string) {
     const cache = await this.prisma.aiInsightCache.findUnique({ where: { userId } });
     if (cache && !cache.isDirty && cache.strategyJson) {
