@@ -49,6 +49,7 @@ export const Icons = {
   Building2: Lucide.Building2,
   PiggyBank: Lucide.PiggyBank,
   Banknote: Lucide.Banknote,
+  Clock: Lucide.Clock,
 };
 
 export type IconName = keyof typeof Icons;

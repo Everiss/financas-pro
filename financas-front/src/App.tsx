@@ -405,6 +405,49 @@ export default function App() {
 
   const handleLogout = () => signOut(auth);
 
+  // --- Timeout de inatividade ---
+  const INACTIVITY_MS = 30 * 60 * 1000; // 30 min
+  const WARN_COUNTDOWN = 60; // segundos de aviso antes do logout
+  const [inactivityWarning, setInactivityWarning] = useState(false);
+  const [countdown, setCountdown] = useState(WARN_COUNTDOWN);
+  const inactivityTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (countdownTimer.current) clearInterval(countdownTimer.current);
+  }, []);
+
+  const resetInactivity = useCallback(() => {
+    if (!user) return;
+    setInactivityWarning(false);
+    clearTimers();
+    inactivityTimer.current = setTimeout(() => {
+      setInactivityWarning(true);
+      setCountdown(WARN_COUNTDOWN);
+      let remaining = WARN_COUNTDOWN;
+      countdownTimer.current = setInterval(() => {
+        remaining -= 1;
+        setCountdown(remaining);
+        if (remaining <= 0) {
+          clearInterval(countdownTimer.current!);
+          signOut(auth);
+        }
+      }, 1000);
+    }, INACTIVITY_MS);
+  }, [user, clearTimers]);
+
+  useEffect(() => {
+    if (!user) { clearTimers(); return; }
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetInactivity));
+    resetInactivity();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetInactivity));
+      clearTimers();
+    };
+  }, [user, resetInactivity, clearTimers]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-blue-50/30 dark:bg-slate-950">
@@ -448,6 +491,43 @@ export default function App() {
         className="min-h-screen bg-blue-50/30 dark:bg-slate-950 text-blue-900 dark:text-slate-100 font-sans"
         style={{ backgroundColor: darkMode ? '#020617' : '#f0f7ff', color: darkMode ? '#f1f5f9' : '#0f172a' }}
       >
+        {/* Modal de inatividade */}
+        <AnimatePresence>
+          {inactivityWarning && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center"
+            >
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl max-w-sm w-full mx-4 text-center"
+              >
+                <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Icons.Clock className="w-8 h-8 text-amber-500" />
+                </div>
+                <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100 mb-2">Sessão inativa</h3>
+                <p className="text-blue-500 dark:text-slate-400 text-sm mb-6">
+                  Você será desconectado por inatividade em <span className="font-bold text-amber-500 text-lg">{countdown}s</span>
+                </p>
+                <div className="w-full bg-blue-100 dark:bg-slate-700 rounded-full h-1.5 mb-6 overflow-hidden">
+                  <div
+                    className="h-full bg-amber-500 rounded-full transition-all duration-1000"
+                    style={{ width: `${(countdown / WARN_COUNTDOWN) * 100}%` }}
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="secondary" className="flex-1" onClick={handleLogout}>Sair agora</Button>
+                  <Button variant="primary" className="flex-1" onClick={resetInactivity}>Continuar</Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Sidebar / Nav */}
         <nav
           className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-0 md:w-64 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t md:border-t-0 md:border-r border-blue-100/50 dark:border-slate-700/50 z-50"
