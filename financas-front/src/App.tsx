@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import * as XLSX from 'xlsx';
+import { LandingPage } from './LandingPage';
 import { PluggyConnect } from 'react-pluggy-connect';
 import {
   auth,
@@ -457,32 +458,7 @@ export default function App() {
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-blue-50/30 dark:bg-slate-950 p-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full text-center space-y-8"
-        >
-          <div className="space-y-4">
-            <div className="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-blue-600/20">
-              <Icons.Wallet className="w-12 h-12 text-white" />
-            </div>
-            <h1 className="text-5xl font-bold text-blue-900 dark:text-slate-100 tracking-tighter">Finanças Pro</h1>
-            <p className="text-blue-500 dark:text-slate-400 text-lg font-medium">Gerencie seu dinheiro com inteligência e simplicidade.</p>
-          </div>
-          
-          <Button onClick={handleLogin} className="w-full py-4 text-lg shadow-xl shadow-blue-600/10">
-            <Icons.User className="w-5 h-5" />
-            Entrar com Google
-          </Button>
-
-          <p className="text-xs text-blue-400 font-medium">
-            Ao entrar, você concorda com nossos termos de uso e política de privacidade.
-          </p>
-        </motion.div>
-      </div>
-    );
+    return <LandingPage onLogin={handleLogin} />;
   }
 
   return (
