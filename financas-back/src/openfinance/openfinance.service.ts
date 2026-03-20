@@ -8,7 +8,7 @@ interface PluggyApiKey {
 }
 
 interface ConnectTokenResponse {
-  accessToken: string;
+  connectToken: string;
 }
 
 interface PluggyAccount {
@@ -119,7 +119,7 @@ export class OpenFinanceService {
       method: 'POST',
       body: JSON.stringify({ clientUserId: userId }),
     });
-    return data.accessToken;
+    return data.connectToken;
   }
 
   /** Retorna as contas de um item conectado */

@@ -132,7 +132,7 @@ export const aiApi = {
 // --- Open Finance (Pluggy) ---
 
 export const openFinanceApi = {
-  getConnectToken: () => request<{ accessToken: string }>('/openfinance/connect-token', { method: 'POST' }),
+  getConnectToken: () => request<{ connectToken: string }>('/openfinance/connect-token', { method: 'POST' }),
   getConnectors: (search?: string) => {
     const qs = search ? `?search=${encodeURIComponent(search)}` : '';
     return request<{ results: PluggyConnector[] }>(`/openfinance/connectors${qs}`);

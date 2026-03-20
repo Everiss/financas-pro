@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+const PluggyConnect = lazy(() => import('react-pluggy-connect').then(m => ({ default: m.PluggyConnect })));
 import {
   auth,
   googleProvider,
@@ -1577,8 +1578,8 @@ function OpenFinanceView() {
     setLoading(true);
     setError('');
     try {
-      const { accessToken } = await openFinanceApi.getConnectToken();
-      setConnectToken(accessToken);
+      const { connectToken: token } = await openFinanceApi.getConnectToken();
+      setConnectToken(token);
       setShowWidget(true);
     } catch (e: any) {
       setError(e.message ?? 'Erro ao iniciar conexão.');
@@ -1648,38 +1649,16 @@ function OpenFinanceView() {
         </div>
       )}
 
-      {/* Pluggy Connect Widget (iframe overlay) */}
+      {/* Pluggy Connect Widget (SDK oficial) */}
       {showWidget && connectToken && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-        >
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl" style={{ height: '600px' }}>
-            <button
-              onClick={() => { setShowWidget(false); setConnectToken(null); }}
-              className="absolute top-3 right-3 z-10 p-2 rounded-xl bg-white/80 hover:bg-white text-slate-700 transition-colors"
-            >
-              <Icons.X className="w-4 h-4" />
-            </button>
-            <iframe
-              src={`https://connect.pluggy.ai?token=${connectToken}`}
-              className="w-full h-full border-0"
-              allow="camera"
-              title="Pluggy Connect"
-              onLoad={() => {
-                // Escuta mensagens do widget
-                const handler = (e: MessageEvent) => {
-                  if (e.data?.type === 'pluggy:success' && e.data?.itemId) {
-                    window.removeEventListener('message', handler);
-                    handleSuccess(e.data.itemId);
-                  }
-                };
-                window.addEventListener('message', handler);
-              }}
-            />
-          </div>
-        </motion.div>
+        <Suspense fallback={null}>
+          <PluggyConnect
+            connectToken={connectToken}
+            onSuccess={({ item }: { item: { id: string } }) => handleSuccess(item.id)}
+            onClose={() => { setShowWidget(false); setConnectToken(null); }}
+            onError={(err: { message: string }) => { setError(err.message ?? 'Erro na conexão.'); setShowWidget(false); setConnectToken(null); }}
+          />
+        </Suspense>
       )}
 
       {/* Connected banks */}

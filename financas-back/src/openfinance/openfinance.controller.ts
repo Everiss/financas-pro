@@ -10,8 +10,8 @@ export class OpenFinanceController {
   /** Gera o token para abrir o widget Pluggy Connect no frontend */
   @Post('connect-token')
   async connectToken(@Request() req: any) {
-    const accessToken = await this.openFinance.createConnectToken(req.user.id);
-    return { accessToken };
+    const connectToken = await this.openFinance.createConnectToken(req.user.id);
+    return { connectToken };
   }
 
   /** Lista bancos/conectores disponíveis */
