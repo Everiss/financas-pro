@@ -39,6 +39,7 @@ model Bank {
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   accounts BankAccount[]
 
+  @@index([userId])
   @@map("banks")
 }
 
@@ -63,6 +64,8 @@ model BankAccount {
   transactions Transaction[]
   reminders    Reminder[]
 
+  @@index([userId])
+  @@index([bankId])
   @@map("bank_accounts")
 }
 
@@ -81,6 +84,7 @@ model Category {
   transactions Transaction[]
   reminders    Reminder[]
 
+  @@index([userId])
   @@map("categories")
 }
 
@@ -103,6 +107,8 @@ model Transaction {
 
   @@index([userId, date])
   @@index([userId, type])
+  @@index([accountId])
+  @@index([categoryId])
   @@map("transactions")
 }
 
@@ -125,6 +131,8 @@ model Reminder {
   category   Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([userId, dueDate])
+  @@index([accountId])
+  @@index([categoryId])
   @@map("reminders")
 }
 

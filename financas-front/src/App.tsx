@@ -17,19 +17,20 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Icons, IconName } from './components/Icons';
 import { cn, formatCurrency, formatDate } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
   Cell,
   LineChart,
-  Line
+  Line,
+  Legend
 } from 'recharts';
 
 import { 
@@ -61,7 +62,7 @@ function fakeTimestamp(dateStr: string | null | undefined) {
 function toTransaction(r: TransactionResponse): Transaction {
   return {
     id: r.id,
-    amount: r.amount,
+    amount: Number(r.amount),
     type: r.type,
     category: r.categoryId || (r.category as any)?.id || '',
     date: fakeTimestamp(r.date) as any,
@@ -78,7 +79,7 @@ function toCategory(r: CategoryResponse): Category {
     name: r.name,
     icon: r.icon,
     color: r.color,
-    budget: r.budget,
+    budget: r.budget != null ? Number(r.budget) : undefined,
     userId: r.userId || '',
   };
 }
@@ -99,8 +100,8 @@ function toAccount(r: AccountResponse): BankAccount {
     name: r.name,
     type: r.type,
     investmentType: r.investmentType,
-    balance: r.balance,
-    creditLimit: r.creditLimit,
+    balance: Number(r.balance),
+    creditLimit: r.creditLimit != null ? Number(r.creditLimit) : undefined,
     closingDay: r.closingDay,
     dueDay: r.dueDay,
     color: r.color,
@@ -114,8 +115,8 @@ function toGoal(r: GoalResponse): Goal {
   return {
     id: r.id,
     name: r.name,
-    targetAmount: r.targetAmount,
-    currentAmount: r.currentAmount,
+    targetAmount: Number(r.targetAmount),
+    currentAmount: Number(r.currentAmount),
     deadline: r.deadline ? (fakeTimestamp(r.deadline) as any) : null,
     category: r.category as Goal['category'],
     color: r.color,
@@ -128,7 +129,7 @@ function toReminder(r: ReminderResponse): Reminder {
   return {
     id: r.id,
     title: r.title,
-    amount: r.amount,
+    amount: Number(r.amount),
     type: r.type,
     category: r.categoryId || (r.category as any)?.id || '',
     accountId: r.accountId,
@@ -308,6 +309,13 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals'>('dashboard');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [transferenciaModal, setTransferenciaModal] = useState<{ open: boolean; prefillToId?: string; prefillAmount?: number }>({ open: false });
+  const [dashboardMonth, setDashboardMonth] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
   const [darkMode, setDarkMode] = useState(() => {
     const stored = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -522,6 +530,10 @@ export default function App() {
                 <button onClick={handleLogout} className="md:hidden flex items-center justify-center w-10 h-10 rounded-full border border-blue-200 dark:border-slate-700 overflow-hidden hover:opacity-80 transition-opacity" title="Sair">
                   <img src={user.photoURL || ''} className="w-full h-full object-cover" alt="Sair" />
                 </button>
+                <Button variant="secondary" onClick={() => setTransferenciaModal({ open: true })} className="shadow-sm hidden sm:flex">
+                  <Icons.ArrowUpRight className="w-4 h-4 rotate-45" />
+                  Transferência
+                </Button>
                 <Button onClick={() => setIsAddModalOpen(true)} className="shadow-lg shadow-blue-900/10">
                   <Icons.Plus className="w-5 h-5" />
                   <span className="hidden sm:inline">Nova Transação</span>
@@ -532,16 +544,63 @@ export default function App() {
             <AnimatePresence mode="wait">
               {activeTab === 'dashboard' && (
                 <motion.div key="dashboard" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                  <DashboardStats transactions={transactions} accounts={accounts} />
+                  {/* Month selector */}
+                  <div className="flex items-center justify-between bg-white/70 dark:bg-slate-900/70 rounded-2xl px-5 py-3 border border-blue-100/50 dark:border-slate-700/50 shadow-sm">
+                    <h3 className="font-semibold text-blue-900 dark:text-slate-100 capitalize">
+                      {format(dashboardMonth, 'MMMM yyyy', { locale: ptBR })}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setDashboardMonth(prev => subMonths(prev, 1))}
+                        className="p-1.5 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 text-blue-400 dark:text-slate-500 transition-colors"
+                      >
+                        <Icons.ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); setDashboardMonth(d); }}
+                        className="px-3 py-1 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        Hoje
+                      </button>
+                      <button
+                        onClick={() => setDashboardMonth(prev => addMonths(prev, 1))}
+                        className="p-1.5 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 text-blue-400 dark:text-slate-500 transition-colors"
+                      >
+                        <Icons.ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {/* Bloco 1 — Patrimônio geral */}
+                  <PatrimonioCard accounts={accounts} transactions={transactions} />
+
+                  {/* Bloco 2 — Fluxo do mês selecionado */}
+                  <FluxoMes transactions={transactions} month={dashboardMonth} />
+
+                  {/* Bloco 3 — Insights IA */}
                   <AIInsights transactions={transactions} />
+
+                  {/* Bloco 4 — Estratégia de compra */}
                   <CreditStrategy accounts={accounts} />
-                  <UpcomingReminders reminders={reminders} categories={categories} accounts={accounts} userId={user.uid} onRefresh={fetchAllData} />
-                  <BudgetProgress transactions={transactions} categories={categories} />
-                  <CreditCardUsage accounts={accounts} transactions={transactions} />
-                  <GoalsSummary goals={goals} onSeeAll={() => setActiveTab('goals')} />
+
+                  {/* Bloco 5 — Cartões | Orçamento */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <DashboardCharts transactions={transactions} categories={categories} accounts={accounts} />
-                    <RecentTransactions transactions={transactions.slice(0, 5)} categories={categories} accounts={accounts} onSeeAll={() => setActiveTab('transactions')} />
+                    <CreditCardUsage accounts={accounts} transactions={transactions} onPayBill={(toId, amount) => setTransferenciaModal({ open: true, prefillToId: toId, prefillAmount: amount })} />
+                    <BudgetProgress transactions={transactions} categories={categories} month={dashboardMonth} />
+                  </div>
+
+                  {/* Bloco 6 — Metas */}
+                  <GoalsSummary goals={goals} onSeeAll={() => setActiveTab('goals')} />
+
+                  {/* Bloco 7 — Gráficos */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <FluxoCaixaChart transactions={transactions} darkMode={darkMode} />
+                    <GastosCategoriaChart transactions={transactions} categories={categories} month={dashboardMonth} darkMode={darkMode} />
+                  </div>
+
+                  {/* Bloco 8 — Lembretes + Recentes */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <UpcomingReminders reminders={reminders} categories={categories} accounts={accounts} userId={user.uid} onRefresh={fetchAllData} />
+                    <RecentTransactions transactions={transactions} categories={categories} accounts={accounts} month={dashboardMonth} onSeeAll={() => setActiveTab('transactions')} />
                   </div>
                 </motion.div>
               )}
@@ -578,7 +637,7 @@ export default function App() {
 
               {activeTab === 'calendar' && (
                 <motion.div key="calendar" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                  <CalendarView reminders={reminders} transactions={transactions} categories={categories} />
+                  <CalendarView reminders={reminders} transactions={transactions} categories={categories} accounts={accounts} />
                 </motion.div>
               )}
 
@@ -600,6 +659,15 @@ export default function App() {
               accounts={accounts}
               transactions={transactions}
               userId={user.uid}
+              onRefresh={fetchAllData}
+            />
+          )}
+          {transferenciaModal.open && (
+            <TransferenciaModal
+              accounts={accounts}
+              prefillToId={transferenciaModal.prefillToId}
+              prefillAmount={transferenciaModal.prefillAmount}
+              onClose={() => setTransferenciaModal({ open: false })}
               onRefresh={fetchAllData}
             />
           )}
@@ -627,32 +695,44 @@ function NavButton({ active, onClick, icon, label }: { active: boolean; onClick:
   );
 }
 
-function DashboardStats({ transactions, accounts }: { transactions: Transaction[]; accounts: BankAccount[] }) {
+function DashboardStats({ transactions, accounts, month }: { transactions: Transaction[]; accounts: BankAccount[]; month: Date }) {
   const stats = useMemo(() => {
-    const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-    const expense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-    const initialBalance = accounts.reduce((acc, a) => a.type === 'credit' ? acc - a.balance : acc + a.balance, 0);
-    
+    const filterByMonth = (txs: Transaction[], m: Date) =>
+      txs.filter(t => {
+        const d = t.date.toDate();
+        return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear();
+      });
+
+    const prevMonth = subMonths(month, 1);
+    const monthTxs = filterByMonth(transactions, month);
+    const prevTxs = filterByMonth(transactions, prevMonth);
+
+    const income = monthTxs.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const expense = monthTxs.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const prevIncome = prevTxs.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const prevExpense = prevTxs.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+
+    const calcTrend = (curr: number, prev: number) =>
+      prev === 0 ? null : Math.round(((curr - prev) / prev) * 100);
+
+    const balance = accounts.reduce((acc, a) => a.type === 'credit' ? acc - a.balance : acc + a.balance, 0);
     const invested = accounts
       .filter(a => a.type === 'investment')
-      .reduce((sum, acc) => {
-        const currentBalance = transactions
-          .filter(t => t.accountId === acc.id)
-          .reduce((accBalance, t) => {
-            return t.type === 'income' ? accBalance + t.amount : accBalance - t.amount;
-          }, acc.balance);
-        return sum + currentBalance;
-      }, 0);
+      .reduce((sum, a) => sum + a.balance, 0);
 
-    return { income, expense, balance: initialBalance + income - expense, invested };
-  }, [transactions, accounts]);
+    return {
+      income, expense, balance, invested,
+      incomeTrend: calcTrend(income, prevIncome),
+      expenseTrend: calcTrend(expense, prevExpense),
+    };
+  }, [transactions, accounts, month]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard title="Saldo Total" amount={stats.balance} icon="Wallet" color="blue" />
       <StatCard title="Investimentos" amount={stats.invested} icon="TrendingUp" color="blue" />
-      <StatCard title="Receitas" amount={stats.income} icon="ArrowUpRight" color="emerald" />
-      <StatCard title="Despesas" amount={stats.expense} icon="ArrowDownLeft" color="red" />
+      <StatCard title="Receitas" amount={stats.income} icon="ArrowUpRight" color="emerald" trend={stats.incomeTrend} />
+      <StatCard title="Despesas" amount={stats.expense} icon="ArrowDownLeft" color="red" trend={stats.expenseTrend} />
     </div>
   );
 }
@@ -787,7 +867,7 @@ function AIInsights({ transactions }: { transactions: Transaction[] }) {
   );
 }
 
-function StatCard({ title, amount, icon, color }: { title: string; amount: number; icon: IconName; color: 'blue' | 'emerald' | 'red' }) {
+function StatCard({ title, amount, icon, color, trend }: { title: string; amount: number; icon: IconName; color: 'blue' | 'emerald' | 'red'; trend?: number | null }) {
   const Icon = Icons[icon];
   const colors = {
     blue: 'text-blue-600 bg-blue-50/50',
@@ -805,18 +885,166 @@ function StatCard({ title, amount, icon, color }: { title: string; amount: numbe
       </div>
       <div>
         <h4 className="text-3xl font-bold tracking-tight text-blue-900 dark:text-slate-100">{formatCurrency(amount)}</h4>
+        {trend !== null && trend !== undefined && (
+          <div className={cn('flex items-center gap-1 mt-1.5 text-xs font-semibold', trend >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+            {trend >= 0 ? <Icons.ArrowUpRight className="w-3.5 h-3.5" /> : <Icons.ArrowDownLeft className="w-3.5 h-3.5" />}
+            <span>{Math.abs(trend)}% vs mês anterior</span>
+          </div>
+        )}
       </div>
     </Card>
   );
 }
 
-function BudgetProgress({ transactions, categories }: { transactions: Transaction[]; categories: Category[] }) {
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+function PatrimonioCard({ accounts, transactions }: { accounts: BankAccount[]; transactions: Transaction[] }) {
+  const stats = useMemo(() => {
+    const calcBalance = (acc: BankAccount) =>
+      transactions
+        .filter(t => t.accountId === acc.id)
+        .reduce((b, t) =>
+          acc.type === 'credit'
+            ? (t.type === 'expense' ? b + t.amount : b - t.amount)
+            : (t.type === 'income' ? b + t.amount : b - t.amount),
+          acc.balance
+        );
 
+    const contasCorrentes = accounts
+      .filter(a => a.type === 'checking' || a.type === 'savings')
+      .reduce((s, a) => s + calcBalance(a), 0);
+
+    const investimentos = accounts
+      .filter(a => a.type === 'investment')
+      .reduce((s, a) => s + calcBalance(a), 0);
+
+    const faturas = accounts
+      .filter(a => a.type === 'credit')
+      .reduce((s, a) => s + Math.max(0, calcBalance(a)), 0);
+
+    const limiteTotal = accounts
+      .filter(a => a.type === 'credit' && (a.creditLimit ?? 0) > 0)
+      .reduce((s, a) => s + (a.creditLimit ?? 0), 0);
+
+    const limiteDisponivel = Math.max(0, limiteTotal - faturas);
+    const usoPercent = limiteTotal > 0 ? (faturas / limiteTotal) * 100 : 0;
+
+    return { contasCorrentes, investimentos, faturas, limiteTotal, limiteDisponivel, usoPercent, patrimonio: contasCorrentes + investimentos - faturas };
+  }, [accounts, transactions]);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-900 via-blue-800 to-slate-900 text-white shadow-xl shadow-blue-900/20 p-6">
+      <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+        <Icons.Wallet className="w-56 h-56" />
+      </div>
+      <div className="relative z-10">
+        <p className="text-blue-300 text-xs font-bold uppercase tracking-widest mb-1">Patrimônio Líquido</p>
+        <h2 className={cn('text-5xl font-bold tracking-tight mb-1', stats.patrimonio >= 0 ? 'text-white' : 'text-red-300')}>
+          {formatCurrency(stats.patrimonio)}
+        </h2>
+        <p className="text-blue-300/60 text-xs font-medium mb-6">Contas + Investimentos − Faturas abertas</p>
+
+        {/* Tiles: Contas, Investimentos, Cartões */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {/* Contas e Poupança */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10 hover:bg-white/15 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <Icons.Wallet className="w-4 h-4 text-blue-300 shrink-0" />
+              <span className="text-[10px] font-bold text-blue-200/70 uppercase tracking-wider">Contas e Poupança</span>
+            </div>
+            <p className="text-lg font-bold text-white">{formatCurrency(stats.contasCorrentes)}</p>
+          </div>
+
+          {/* Investimentos */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10 hover:bg-white/15 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <Icons.TrendingUp className="w-4 h-4 text-blue-300 shrink-0" />
+              <span className="text-[10px] font-bold text-blue-200/70 uppercase tracking-wider">Investimentos</span>
+            </div>
+            <p className="text-lg font-bold text-white">{formatCurrency(stats.investimentos)}</p>
+          </div>
+
+          {/* Cartões de Crédito — tile especial com barra */}
+          {stats.limiteTotal > 0 && (
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10 hover:bg-white/15 transition-colors col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Icons.CreditCard className="w-4 h-4 text-blue-300 shrink-0" />
+                <span className="text-[10px] font-bold text-blue-200/70 uppercase tracking-wider">Cartões de Crédito</span>
+              </div>
+              <div className="flex items-end justify-between mb-2">
+                <div>
+                  <p className={cn('text-lg font-bold leading-none', stats.faturas > 0 ? 'text-red-300' : 'text-white')}>
+                    {formatCurrency(stats.faturas)}
+                    <span className="text-[10px] font-semibold text-blue-200/50 ml-1">utilizado</span>
+                  </p>
+                  <p className="text-[11px] text-blue-200/60 font-medium mt-0.5">
+                    de {formatCurrency(stats.limiteTotal)} no limite
+                  </p>
+                </div>
+                <span className={cn('text-xs font-bold', stats.usoPercent > 80 ? 'text-red-300' : stats.usoPercent > 50 ? 'text-amber-300' : 'text-emerald-300')}>
+                  {stats.usoPercent.toFixed(0)}%
+                </span>
+              </div>
+              {/* Barra de uso */}
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all duration-700', stats.usoPercent > 80 ? 'bg-red-400' : stats.usoPercent > 50 ? 'bg-amber-400' : 'bg-emerald-400')}
+                  style={{ width: `${Math.min(stats.usoPercent, 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-blue-200/50 font-medium mt-1.5">
+                Disponível: <span className="text-emerald-300 font-bold">{formatCurrency(stats.limiteDisponivel)}</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FluxoMes({ transactions, month }: { transactions: Transaction[]; month: Date }) {
+  const stats = useMemo(() => {
+    const filterByMonth = (txs: Transaction[], m: Date) =>
+      txs.filter(t => {
+        const d = t.date.toDate();
+        return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear();
+      });
+    const prevMonth = subMonths(month, 1);
+    const monthTxs = filterByMonth(transactions, month);
+    const prevTxs = filterByMonth(transactions, prevMonth);
+    const income = monthTxs.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0);
+    const expense = monthTxs.filter(t => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
+    const prevIncome = prevTxs.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0);
+    const prevExpense = prevTxs.filter(t => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
+    const calcTrend = (curr: number, prev: number) => prev === 0 ? null : Math.round(((curr - prev) / prev) * 100);
+    return { income, expense, resultado: income - expense, incomeTrend: calcTrend(income, prevIncome), expenseTrend: calcTrend(expense, prevExpense) };
+  }, [transactions, month]);
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <StatCard title="Receitas" amount={stats.income} icon="ArrowUpRight" color="emerald" trend={stats.incomeTrend} />
+      <StatCard title="Despesas" amount={stats.expense} icon="ArrowDownLeft" color="red" trend={stats.expenseTrend} />
+      <Card className="relative overflow-hidden border-none shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm font-semibold text-blue-900/60 dark:text-slate-400">Resultado do Mês</p>
+          <div className={cn('p-2.5 rounded-2xl', stats.resultado >= 0 ? 'text-emerald-600 bg-emerald-50/50' : 'text-red-600 bg-red-50/50')}>
+            {stats.resultado >= 0 ? <Icons.ArrowUpRight className="w-5 h-5" /> : <Icons.ArrowDownLeft className="w-5 h-5" />}
+          </div>
+        </div>
+        <h4 className={cn('text-3xl font-bold tracking-tight', stats.resultado >= 0 ? 'text-emerald-600' : 'text-red-600')}>
+          {stats.resultado >= 0 ? '+' : ''}{formatCurrency(stats.resultado)}
+        </h4>
+        <p className="text-xs font-medium text-blue-400 dark:text-slate-500 mt-1.5">
+          {stats.resultado >= 0 ? 'Saldo positivo no mês' : 'Déficit no mês'}
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+function BudgetProgress({ transactions, categories, month }: { transactions: Transaction[]; categories: Category[]; month: Date }) {
   const expensesThisMonth = transactions.filter(t => {
     const d = t.date.toDate();
-    return t.type === 'expense' && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    return t.type === 'expense' && d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
   });
 
   const categoriesWithBudget = categories.filter(c => c.budget && c.budget > 0);
@@ -865,65 +1093,61 @@ function BudgetProgress({ transactions, categories }: { transactions: Transactio
   );
 }
 
-function CreditCardUsage({ accounts, transactions }: { accounts: BankAccount[]; transactions: Transaction[] }) {
+function CreditCardUsage({ accounts, transactions, onPayBill }: { accounts: BankAccount[]; transactions: Transaction[]; onPayBill?: (toId: string, amount: number) => void }) {
   const creditCards = useMemo(() => {
     return accounts
       .filter(a => a.type === 'credit' && a.creditLimit && a.creditLimit > 0)
       .map(acc => {
         const currentBalance = transactions
           .filter(t => t.accountId === acc.id)
-          .reduce((accBalance, t) => {
-            return t.type === 'expense' ? accBalance + t.amount : accBalance - t.amount;
-          }, acc.balance);
-        
+          .reduce((b, t) => t.type === 'expense' ? b + t.amount : b - t.amount, acc.balance);
         const used = Math.max(0, currentBalance);
         const available = Math.max(0, acc.creditLimit! - used);
         const percentage = Math.min((used / acc.creditLimit!) * 100, 100);
-
-        return {
-          name: acc.name,
-          used,
-          available,
-          limit: acc.creditLimit!,
-          percentage,
-          color: acc.color
-        };
+        return { id: acc.id, name: acc.name, used, available, limit: acc.creditLimit!, percentage, color: acc.color };
       });
   }, [accounts, transactions]);
 
   if (creditCards.length === 0) return null;
 
   return (
-    <Card title="Uso do Cartão de Crédito" subtitle="Limite utilizado vs disponível" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-      <div className="space-y-8">
+    <Card title="Cartões de Crédito" subtitle="Limite utilizado vs disponível" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+      <div className="space-y-6">
         {creditCards.map(card => (
-          <div key={card.name} className="space-y-3">
-            <div className="flex justify-between items-end">
+          <div key={card.id} className="space-y-3">
+            <div className="flex justify-between items-start">
               <div>
                 <h4 className="font-bold text-blue-900 dark:text-slate-100 text-sm">{card.name}</h4>
                 <p className="text-[10px] text-blue-500 dark:text-slate-400 font-medium uppercase tracking-wider">Limite: {formatCurrency(card.limit)}</p>
               </div>
-              <div className="text-right">
-                <span className={cn("text-sm font-bold", card.percentage > 90 ? "text-red-600" : "text-blue-900 dark:text-slate-100")}>
-                  {formatCurrency(card.used)}
-                </span>
-                <span className="text-blue-400 dark:text-slate-500 text-xs mx-1">utilizado</span>
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <span className={cn("text-sm font-bold", card.percentage > 90 ? "text-red-600" : "text-blue-900 dark:text-slate-100")}>
+                    {formatCurrency(card.used)}
+                  </span>
+                  <span className="text-blue-400 dark:text-slate-500 text-xs mx-1">utilizado</span>
+                </div>
+                {onPayBill && card.used > 0 && (
+                  <button
+                    onClick={() => onPayBill(card.id, card.used)}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors whitespace-nowrap"
+                  >
+                    Pagar Fatura
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="relative h-4 bg-blue-100 dark:bg-slate-700 rounded-full overflow-hidden">
-              <motion.div 
+            <div className="relative h-3 bg-blue-100 dark:bg-slate-700 rounded-full overflow-hidden">
+              <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${card.percentage}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
-                className={cn(
-                  "absolute h-full rounded-full transition-all duration-500",
-                  card.percentage > 90 ? "bg-red-500" : card.percentage > 70 ? "bg-amber-500" : "bg-emerald-500"
-                )}
+                className={cn("absolute h-full rounded-full", card.percentage > 90 ? "bg-red-500" : card.percentage > 70 ? "bg-amber-500" : "bg-emerald-500")}
                 style={{ backgroundColor: card.percentage <= 70 ? card.color : undefined }}
               />
             </div>
-            
+
             <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
               <span className="text-blue-400">{card.percentage.toFixed(1)}% utilizado</span>
               <span className="text-emerald-600">Disponível: {formatCurrency(card.available)}</span>
@@ -935,165 +1159,133 @@ function CreditCardUsage({ accounts, transactions }: { accounts: BankAccount[]; 
   );
 }
 
-function DashboardCharts({ transactions, categories, accounts }: { transactions: Transaction[]; categories: Category[]; accounts: BankAccount[] }) {
-  const pieData = useMemo(() => {
-    const expenses = transactions.filter(t => t.type === 'expense');
-    const grouped = expenses.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(grouped).map(([catId, amount]) => {
-      const cat = categories.find(c => c.id === catId);
-      return {
-        name: cat?.name || 'Outros',
-        value: amount,
-        color: cat?.color || '#71717a'
-      };
-    }).sort((a, b) => b.value - a.value);
-  }, [transactions, categories]);
+function FluxoCaixaChart({ transactions, darkMode }: { transactions: Transaction[]; darkMode: boolean }) {
+  const gridColor = darkMode ? '#1e293b' : '#e4e4e7';
+  const tickColor = darkMode ? '#64748b' : '#a1a1aa';
+  const tooltipStyle = { borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)', padding: '12px 16px', fontWeight: 500, backgroundColor: darkMode ? '#1e293b' : '#ffffff', color: darkMode ? '#f1f5f9' : '#0f172a' };
+  const cursorFill = darkMode ? '#0f172a' : '#f4f4f5';
 
   const barData = useMemo(() => {
-    // Last 6 months
     const data: any[] = [];
     for (let i = 5; i >= 0; i--) {
       const date = new Date();
       date.setMonth(date.getMonth() - i);
       const monthLabel = new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(date);
-      const month = date.getMonth();
-      const year = date.getFullYear();
-
-      const monthTransactions = transactions.filter(t => {
+      const m = date.getMonth();
+      const y = date.getFullYear();
+      const monthTxs = transactions.filter(t => {
         const d = t.date.toDate();
-        return d.getMonth() === month && d.getFullYear() === year;
+        return d.getMonth() === m && d.getFullYear() === y;
       });
-
       data.push({
         name: monthLabel,
-        receitas: monthTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
-        despesas: monthTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
+        receitas: monthTxs.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
+        despesas: monthTxs.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
       });
     }
     return data;
   }, [transactions]);
 
-  const accountBalancesData = useMemo(() => {
-    return accounts.map(account => {
-      const accountTransactions = transactions.filter(t => t.accountId === account.id);
-      const balance = accountTransactions.reduce((accBalance, t) => {
-        if (account.type === 'credit') {
-          return t.type === 'expense' ? accBalance + t.amount : accBalance - t.amount;
-        }
-        return t.type === 'income' ? accBalance + t.amount : accBalance - t.amount;
-      }, account.balance);
-
-      return {
-        name: account.name,
-        balance: balance,
-        type: account.type
-      };
-    }).sort((a, b) => b.balance - a.balance);
-  }, [transactions, accounts]);
-
   return (
-    <div className="space-y-6">
-      <Card title="Saldo por Conta" subtitle="Saldo atual consolidado por conta" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-        <div className="h-[300px] w-full mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={accountBalancesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a1a1aa', fontWeight: 500 }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a1a1aa', fontWeight: 500 }} />
-              <Tooltip 
-                cursor={{ fill: '#f4f4f5' }}
-                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)', padding: '12px 16px', fontWeight: 500 }}
-                formatter={(value: number) => formatCurrency(value)}
-              />
-              <Bar 
-                dataKey="balance" 
-                radius={[6, 6, 0, 0]} 
-                maxBarSize={40}
-              >
-                {accountBalancesData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.balance >= 0 ? '#10b981' : '#ef4444'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      <Card title="Fluxo de Caixa" subtitle="Receitas vs Despesas (Últimos 6 meses)" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-        <div className="h-[300px] w-full mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a1a1aa', fontWeight: 500 }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a1a1aa', fontWeight: 500 }} />
-              <Tooltip 
-                cursor={{ fill: '#f4f4f5' }}
-                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)', padding: '12px 16px', fontWeight: 500 }}
-                formatter={(value: number) => formatCurrency(value)}
-              />
-              <Bar dataKey="receitas" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={40} />
-              <Bar dataKey="despesas" fill="#ef4444" radius={[6, 6, 0, 0]} maxBarSize={40} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      <Card title="Gastos por Categoria" subtitle="Distribuição proporcional das despesas" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-        <div className="h-[300px] w-full mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={70}
-                outerRadius={90}
-                paddingAngle={8}
-                dataKey="value"
-                stroke="none"
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip 
-                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)', padding: '12px 16px', fontWeight: 500 }}
-                formatter={(value: number) => formatCurrency(value)}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          {pieData.slice(0, 4).map((item, i) => (
-            <div key={i} className="flex items-center gap-3 bg-blue-50/50 dark:bg-slate-800/50 p-2 rounded-xl">
-              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-              <span className="text-xs font-medium text-blue-700 dark:text-slate-300 truncate">{item.name}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
+    <Card title="Fluxo de Caixa" subtitle="Receitas vs Despesas — últimos 6 meses" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+      <div className="h-[300px] w-full mt-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor, fontWeight: 500 }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor, fontWeight: 500 }} />
+            <Tooltip cursor={{ fill: cursorFill }} contentStyle={tooltipStyle} formatter={(value: number) => formatCurrency(value)} />
+            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '16px', color: tickColor }} formatter={(v) => v === 'receitas' ? 'Receitas' : 'Despesas'} />
+            <Bar dataKey="receitas" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={40} />
+            <Bar dataKey="despesas" fill="#ef4444" radius={[6, 6, 0, 0]} maxBarSize={40} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </Card>
   );
 }
 
-function RecentTransactions({ transactions, categories, accounts, onSeeAll }: { transactions: Transaction[]; categories: Category[]; accounts: BankAccount[]; onSeeAll: () => void }) {
+function GastosCategoriaChart({ transactions, categories, month, darkMode }: { transactions: Transaction[]; categories: Category[]; month: Date; darkMode: boolean }) {
+  const tooltipStyle = { borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)', padding: '12px 16px', fontWeight: 500, backgroundColor: darkMode ? '#1e293b' : '#ffffff', color: darkMode ? '#f1f5f9' : '#0f172a' };
+
+  const pieData = useMemo(() => {
+    const expenses = transactions.filter(t => {
+      const d = t.date.toDate();
+      return t.type === 'expense' && d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
+    });
+    const grouped = expenses.reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(grouped).map(([catId, amount]) => {
+      const cat = categories.find(c => c.id === catId);
+      return { name: cat?.name || 'Outros', value: amount, color: cat?.color || '#71717a' };
+    }).sort((a, b) => b.value - a.value);
+  }, [transactions, categories, month]);
+
+  const total = pieData.reduce((s, d) => s + d.value, 0);
+
   return (
-    <Card title="Transações Recentes" className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm" action={<Button variant="ghost" className="text-xs font-medium" onClick={onSeeAll}>Ver Tudo</Button>}>
+    <Card title="Gastos por Categoria" subtitle={`Distribuição das despesas — ${format(month, 'MMM yyyy', { locale: ptBR })}`} className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+      {pieData.length === 0 ? (
+        <div className="h-[200px] flex items-center justify-center">
+          <p className="text-sm text-blue-400 dark:text-slate-500 font-medium">Sem despesas neste mês.</p>
+        </div>
+      ) : (
+        <>
+          <div className="h-[240px] w-full mt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={65} outerRadius={85} paddingAngle={6} dataKey="value" stroke="none">
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => formatCurrency(value)} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-3 space-y-2">
+            {pieData.map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="text-xs font-medium text-blue-700 dark:text-slate-300 flex-1 truncate">{item.name}</span>
+                <span className="text-xs font-bold text-blue-500 dark:text-slate-400">{total > 0 ? ((item.value / total) * 100).toFixed(0) : 0}%</span>
+                <span className="text-xs font-bold text-blue-900 dark:text-slate-100 w-20 text-right">{formatCurrency(item.value)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function RecentTransactions({ transactions, categories, accounts, month, onSeeAll }: { transactions: Transaction[]; categories: Category[]; accounts: BankAccount[]; month: Date; onSeeAll: () => void }) {
+  const monthTxs = useMemo(() =>
+    transactions
+      .filter(t => {
+        const d = t.date.toDate();
+        return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
+      })
+      .sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime())
+      .slice(0, 8),
+    [transactions, month]
+  );
+
+  return (
+    <Card title="Transações Recentes" subtitle={format(month, 'MMM yyyy', { locale: ptBR })} className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm" action={<Button variant="ghost" className="text-xs font-medium" onClick={onSeeAll}>Ver Tudo</Button>}>
       <div className="space-y-2">
-        {transactions.length === 0 ? (
+        {monthTxs.length === 0 ? (
           <div className="py-12 text-center">
             <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <Icons.AlertCircle className="w-6 h-6 text-blue-300 dark:text-slate-500" />
             </div>
-            <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhuma transação encontrada.</p>
+            <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhuma transação neste mês.</p>
           </div>
         ) : (
-          transactions.map(t => (
-            <TransactionItem key={t.id} transaction={t} category={categories.find(c => c.id === t.category)} account={accounts.find(a => a.id === t.accountId)} />
+          monthTxs.map(t => (
+            <TransactionItem key={t.id} transaction={t} category={categories.find(c => c.id === t.category)} account={accounts.find(a => a.id === t.accountId)} showDate />
           ))
         )}
       </div>
@@ -1358,51 +1550,80 @@ function CategoryManager({ categories, userId, onRefresh }: { categories: Catego
   );
 }
 
-function CalendarView({ reminders, transactions, categories }: { reminders: Reminder[]; transactions: Transaction[]; categories: Category[] }) {
+function CalendarView({ reminders, transactions, categories, accounts }: { reminders: Reminder[]; transactions: Transaction[]; categories: Category[]; accounts: BankAccount[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [filter, setFilter] = useState<'all' | 'expense' | 'income' | 'reminder'>('all');
+  const [filter, setFilter] = useState<'all' | 'expense' | 'income' | 'reminder' | 'card'>('all');
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart);
   const endDate = endOfWeek(monthEnd);
-
   const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+  // Credit cards with closing/due days
+  const creditCards = useMemo(
+    () => accounts.filter(a => a.type === 'credit' && (a.closingDay || a.dueDay)),
+    [accounts]
+  );
+
+  const getCardEvents = (day: Date) => {
+    if (!isSameMonth(day, monthStart)) return [];
+    const d = parseInt(format(day, 'd'));
+    const events: { cardName: string; color: string; kind: 'closing' | 'due' }[] = [];
+    creditCards.forEach(acc => {
+      if (acc.closingDay === d) events.push({ cardName: acc.name, color: acc.color, kind: 'closing' });
+      if (acc.dueDay === d) events.push({ cardName: acc.name, color: acc.color, kind: 'due' });
+    });
+    return events;
+  };
 
   const getDayData = (day: Date) => {
     const dayReminders = reminders.filter(r => isSameDay(r.dueDate.toDate(), day));
     const dayTransactions = transactions.filter(t => isSameDay(t.date.toDate(), day));
+    const cardEvents = getCardEvents(day);
 
     let filteredReminders = dayReminders;
     let filteredTransactions = dayTransactions;
+    let filteredCardEvents = cardEvents;
 
     if (filter === 'expense') {
       filteredReminders = dayReminders.filter(r => r.type === 'expense');
       filteredTransactions = dayTransactions.filter(t => t.type === 'expense');
+      filteredCardEvents = [];
     } else if (filter === 'income') {
       filteredReminders = dayReminders.filter(r => r.type === 'income');
       filteredTransactions = dayTransactions.filter(t => t.type === 'income');
+      filteredCardEvents = [];
     } else if (filter === 'reminder') {
+      filteredTransactions = [];
+      filteredCardEvents = [];
+    } else if (filter === 'card') {
+      filteredReminders = [];
       filteredTransactions = [];
     }
 
     const totalExpense = [...filteredReminders.filter(r => r.type === 'expense'), ...filteredTransactions.filter(t => t.type === 'expense')]
       .reduce((sum, item) => sum + item.amount, 0);
-    
     const totalIncome = [...filteredReminders.filter(r => r.type === 'income'), ...filteredTransactions.filter(t => t.type === 'income')]
       .reduce((sum, item) => sum + item.amount, 0);
 
-    return {
-      reminders: filteredReminders,
-      transactions: filteredTransactions,
-      totalExpense,
-      totalIncome,
-      isCritical: totalExpense > 500 // Threshold for "critical" period
-    };
+    return { reminders: filteredReminders, transactions: filteredTransactions, cardEvents: filteredCardEvents, totalExpense, totalIncome, isCritical: totalExpense > 500 };
   };
+
+  // Build a list of upcoming card events this month for the summary panel
+  const upcomingCardEvents = useMemo(() => {
+    const today = new Date();
+    return days
+      .filter(d => isSameMonth(d, monthStart))
+      .flatMap(d => getCardEvents(d).map(ev => ({ ...ev, date: d })))
+      .filter(ev => ev.date >= today)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [days, creditCards, monthStart]);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-2 hover:bg-blue-100 dark:hover:bg-slate-800 rounded-full transition-colors">
@@ -1417,101 +1638,101 @@ function CalendarView({ reminders, transactions, categories }: { reminders: Remi
         </div>
 
         <div className="flex p-1 bg-blue-100 dark:bg-slate-800 rounded-2xl w-full sm:w-auto overflow-x-auto">
-          {(['all', 'expense', 'income', 'reminder'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                'px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all',
-                filter === f ? 'bg-white dark:bg-slate-700 text-blue-900 dark:text-slate-100 shadow-sm' : 'text-blue-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-slate-200'
-              )}
+          {(['all', 'expense', 'income', 'reminder', 'card'] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={cn('px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all', filter === f ? 'bg-white dark:bg-slate-700 text-blue-900 dark:text-slate-100 shadow-sm' : 'text-blue-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-slate-200')}
             >
               {f === 'all' && 'Tudo'}
               {f === 'expense' && 'Despesas'}
               {f === 'income' && 'Receitas'}
               {f === 'reminder' && 'Lembretes'}
+              {f === 'card' && '💳 Cartões'}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Legend */}
+      {creditCards.length > 0 && (
+        <div className="flex flex-wrap items-center gap-4 px-1">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm bg-orange-400" />
+            <span className="text-xs font-medium text-blue-500 dark:text-slate-400">Fechamento da fatura</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm bg-red-500" />
+            <span className="text-xs font-medium text-blue-500 dark:text-slate-400">Vencimento da fatura</span>
+          </div>
+        </div>
+      )}
+
+      {/* Calendar grid */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-blue-200/60 dark:border-slate-700/60 shadow-sm overflow-hidden">
         <div className="grid grid-cols-7 border-b border-blue-100 dark:border-slate-700 bg-blue-50/50 dark:bg-slate-800/50">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-            <div key={day} className="py-3 text-center text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest">
-              {day}
-            </div>
+            <div key={day} className="py-3 text-center text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest">{day}</div>
           ))}
         </div>
         <div className="grid grid-cols-7">
-          {days.map((day, i) => {
+          {days.map((day) => {
             const data = getDayData(day);
             const isCurrentMonth = isSameMonth(day, monthStart);
-            
+            const hasClosing = data.cardEvents.some(e => e.kind === 'closing');
+            const hasDue = data.cardEvents.some(e => e.kind === 'due');
+            const hasEvents = data.cardEvents.length > 0 || data.reminders.length > 0 || data.transactions.length > 0;
+            const isSelected = selectedDay ? isSameDay(day, selectedDay) : false;
+
             return (
-              <div 
-                key={day.toString()} 
+              <div
+                key={day.toString()}
+                onClick={() => setSelectedDay(isSelected ? null : day)}
                 className={cn(
-                  "min-h-[100px] sm:min-h-[120px] p-2 border-r border-b border-blue-100 dark:border-slate-700/50 last:border-r-0 transition-colors relative group",
+                  "min-h-[100px] sm:min-h-[120px] p-2 border-r border-b border-blue-100 dark:border-slate-700/50 last:border-r-0 transition-all relative",
                   !isCurrentMonth && "bg-blue-50/30 dark:bg-slate-800/30",
-                  isToday(day) && "bg-blue-900/[0.02] dark:bg-blue-500/5"
+                  isToday(day) && "bg-blue-900/[0.02] dark:bg-blue-500/5",
+                  hasDue && isCurrentMonth && "ring-1 ring-inset ring-red-200 dark:ring-red-900/40",
+                  hasClosing && isCurrentMonth && !hasDue && "ring-1 ring-inset ring-orange-200 dark:ring-orange-900/40",
+                  isSelected && "bg-blue-50 dark:bg-blue-900/20 ring-2 ring-inset ring-blue-400 dark:ring-blue-500",
+                  hasEvents && isCurrentMonth && "cursor-pointer hover:bg-blue-50/60 dark:hover:bg-slate-800/60",
+                  !hasEvents && "cursor-default"
                 )}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1">
                   <span className={cn(
                     "text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-colors",
-                    isToday(day) ? "bg-blue-900 text-white" : isCurrentMonth ? "text-blue-900 dark:text-slate-200" : "text-blue-300 dark:text-slate-600"
+                    isSelected ? "bg-blue-600 text-white" :
+                    isToday(day) ? "bg-blue-900 dark:bg-blue-500 text-white" :
+                    isCurrentMonth ? "text-blue-900 dark:text-slate-200" : "text-blue-300 dark:text-slate-600"
                   )}>
                     {format(day, 'd')}
                   </span>
-                  {data.isCritical && (
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="Período Crítico" />
-                  )}
+                  {data.isCritical && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-0.5">
+                  {data.cardEvents.map((ev, idx) => (
+                    <div key={idx} className={cn('text-[8px] font-bold px-1 py-0.5 rounded truncate flex items-center gap-0.5', ev.kind === 'closing' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300')}>
+                      <Icons.CreditCard className="w-2.5 h-2.5 shrink-0" />
+                      <span className="truncate">{ev.cardName}</span>
+                    </div>
+                  ))}
                   {data.totalIncome > 0 && (
-                    <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md truncate">
+                    <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded-md truncate">
                       + {formatCurrency(data.totalIncome)}
                     </div>
                   )}
                   {data.totalExpense > 0 && (
-                    <div className={cn(
-                      "text-[9px] font-bold px-1.5 py-0.5 rounded-md truncate",
-                      data.isCritical ? "bg-red-50 text-red-600" : "bg-blue-100 text-blue-600"
-                    )}>
+                    <div className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-md truncate", data.isCritical ? "bg-red-50 text-red-600" : "bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400")}>
                       - {formatCurrency(data.totalExpense)}
                     </div>
                   )}
-                  
-                  <div className="flex flex-wrap gap-0.5 mt-1">
-                    {data.reminders.map(r => (
-                      <div key={r.id} className="w-1 h-1 rounded-full bg-blue-400" title={`Lembrete: ${r.title}`} />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Hover Details */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm p-3 transition-opacity border border-blue-200 dark:border-slate-600 shadow-xl rounded-xl -m-1">
-                  <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase mb-2">{format(day, "dd 'de' MMMM", { locale: ptBR })}</p>
-                  <div className="space-y-2 max-h-[100px] overflow-y-auto pr-1">
-                    {data.reminders.map(r => (
-                      <div key={r.id} className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-medium text-blue-600 truncate">{r.title}</span>
-                        <span className={cn("text-[10px] font-bold", r.type === 'income' ? 'text-emerald-600' : 'text-blue-900')}>
-                          {formatCurrency(r.amount)}
-                        </span>
-                      </div>
-                    ))}
-                    {data.transactions.map(t => (
-                      <div key={t.id} className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-medium text-blue-400 truncate italic">{t.description || 'Sem descrição'}</span>
-                        <span className={cn("text-[10px] font-bold opacity-70", t.type === 'income' ? 'text-emerald-600' : 'text-blue-900')}>
-                          {formatCurrency(t.amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  {data.reminders.length > 0 && (
+                    <div className="flex flex-wrap gap-0.5 mt-0.5">
+                      {data.reminders.map(r => (
+                        <div key={r.id} className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -1519,26 +1740,249 @@ function CalendarView({ reminders, transactions, categories }: { reminders: Remi
         </div>
       </div>
 
+      {/* Day detail modal */}
+      <AnimatePresence>
+        {selectedDay && (() => {
+          const allCardEvents = getCardEvents(selectedDay);
+          const allReminders = reminders.filter(r => isSameDay(r.dueDate.toDate(), selectedDay));
+          const allTransactions = transactions.filter(t => isSameDay(t.date.toDate(), selectedDay));
+          const totalIncome = allTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+          const totalExpense = allTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+          const isEmpty = allCardEvents.length === 0 && allReminders.length === 0 && allTransactions.length === 0;
+
+          return (
+            <motion.div
+              key="day-detail-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+              onClick={() => setSelectedDay(null)}
+            >
+              {/* Backdrop */}
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+              {/* Modal */}
+              <motion.div
+                key="day-detail-modal"
+                initial={{ opacity: 0, y: 40, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 40, scale: 0.97 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className="relative w-full sm:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-blue-200/60 dark:border-slate-700/60 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Drag handle (mobile) */}
+                <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+                  <div className="w-10 h-1 rounded-full bg-blue-200 dark:bg-slate-700" />
+                </div>
+
+                {/* Modal header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-blue-100 dark:border-slate-700/50 bg-blue-50/50 dark:bg-slate-800/50 shrink-0">
+                  <div>
+                    <h3 className="text-base font-bold text-blue-900 dark:text-slate-100 capitalize">
+                      {format(selectedDay, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    </h3>
+                    {!isEmpty && (
+                      <p className="text-xs text-blue-500 dark:text-slate-400 font-medium mt-0.5">
+                        {[allCardEvents.length > 0 && `${allCardEvents.length} evento${allCardEvents.length > 1 ? 's' : ''} de cartão`, allReminders.length > 0 && `${allReminders.length} lembrete${allReminders.length > 1 ? 's' : ''}`, allTransactions.length > 0 && `${allTransactions.length} transaç${allTransactions.length > 1 ? 'ões' : 'ão'}`].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                  <button onClick={() => setSelectedDay(null)} className="p-2 rounded-xl text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-800 transition-colors">
+                    <Icons.X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Scrollable content */}
+                <div className="p-6 space-y-6 overflow-y-auto">
+                  {isEmpty && (
+                    <div className="py-8 text-center">
+                      <div className="w-12 h-12 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Icons.Calendar className="w-5 h-5 text-blue-300 dark:text-slate-500" />
+                      </div>
+                      <p className="text-sm text-blue-400 dark:text-slate-500 font-medium">Nenhum evento neste dia.</p>
+                    </div>
+                  )}
+
+                  {/* Card events */}
+                  {allCardEvents.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest mb-3">Cartões de Crédito</p>
+                      <div className="space-y-2">
+                        {allCardEvents.map((ev, idx) => {
+                          const card = accounts.find(a => a.type === 'credit' && a.name === ev.cardName);
+                          const balance = card ? transactions.filter(t => t.accountId === card.id).reduce((b, t) => t.type === 'expense' ? b + t.amount : b - t.amount, card.balance) : 0;
+                          const used = Math.max(0, balance);
+                          const available = card?.creditLimit ? Math.max(0, card.creditLimit - used) : null;
+
+                          return (
+                            <div key={idx} className={cn('p-4 rounded-2xl border', ev.kind === 'closing' ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/40' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/40')}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center shrink-0', ev.kind === 'closing' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600')}>
+                                    <Icons.CreditCard className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-blue-900 dark:text-slate-100 text-sm">{ev.cardName}</p>
+                                    <p className={cn('text-xs font-semibold', ev.kind === 'closing' ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400')}>
+                                      {ev.kind === 'closing' ? '📅 Fechamento da fatura' : '⚠️ Vencimento — data de pagamento'}
+                                    </p>
+                                  </div>
+                                </div>
+                                {card?.creditLimit && (
+                                  <div className="text-right shrink-0">
+                                    <p className="text-sm font-bold text-blue-900 dark:text-slate-100">{formatCurrency(used)}</p>
+                                    <p className="text-[10px] text-blue-400 dark:text-slate-500 font-medium">de {formatCurrency(card.creditLimit)}</p>
+                                  </div>
+                                )}
+                              </div>
+                              {card?.creditLimit && (
+                                <div className="mt-3 space-y-1.5">
+                                  <div className="h-1.5 bg-white/60 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div
+                                      className={cn('h-full rounded-full', used / card.creditLimit > 0.8 ? 'bg-red-500' : used / card.creditLimit > 0.5 ? 'bg-amber-500' : 'bg-emerald-500')}
+                                      style={{ width: `${Math.min((used / card.creditLimit) * 100, 100)}%` }}
+                                    />
+                                  </div>
+                                  <div className="flex justify-between text-[10px] font-semibold">
+                                    <span className="text-blue-400 dark:text-slate-500">{((used / card.creditLimit) * 100).toFixed(0)}% utilizado</span>
+                                    {available !== null && <span className="text-emerald-600">Disponível: {formatCurrency(available)}</span>}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reminders */}
+                  {allReminders.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest mb-3">Lembretes</p>
+                      <div className="space-y-2">
+                        {allReminders.map(r => {
+                          const cat = categories.find(c => c.id === r.category);
+                          const CatIcon = cat ? Icons[cat.icon as IconName] || Icons.MoreHorizontal : Icons.MoreHorizontal;
+                          return (
+                            <div key={r.id} className="flex items-center gap-3 p-3.5 rounded-2xl border border-blue-100 dark:border-slate-700 bg-blue-50/30 dark:bg-slate-800/30">
+                              <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center shrink-0', r.type === 'income' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-50 dark:bg-red-900/20 text-red-500')} style={cat ? { backgroundColor: `${cat.color}20`, color: cat.color } : {}}>
+                                <CatIcon className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-blue-900 dark:text-slate-100 text-sm truncate">{r.title}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {cat && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${cat.color}20`, color: cat.color }}>{cat.name}</span>}
+                                  <span className="text-[10px] text-blue-400 dark:text-slate-500 font-medium capitalize">{r.frequency}</span>
+                                </div>
+                                {r.notes && <p className="text-xs text-blue-400 dark:text-slate-500 mt-1 truncate">{r.notes}</p>}
+                              </div>
+                              <p className={cn('font-bold text-sm shrink-0', r.type === 'income' ? 'text-emerald-600' : 'text-red-600')}>
+                                {r.type === 'income' ? '+' : '−'}{formatCurrency(r.amount)}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Transactions */}
+                  {allTransactions.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest">Transações</p>
+                        <div className="flex items-center gap-3 text-xs font-semibold">
+                          {totalIncome > 0 && <span className="text-emerald-600">+{formatCurrency(totalIncome)}</span>}
+                          {totalExpense > 0 && <span className="text-red-500">−{formatCurrency(totalExpense)}</span>}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {allTransactions.map(t => {
+                          const cat = categories.find(c => c.id === t.category);
+                          const acc = accounts.find(a => a.id === t.accountId);
+                          const CatIcon = cat ? Icons[cat.icon as IconName] || Icons.MoreHorizontal : Icons.MoreHorizontal;
+                          return (
+                            <div key={t.id} className="flex items-center gap-3 p-3.5 rounded-2xl border border-blue-100 dark:border-slate-700 bg-blue-50/30 dark:bg-slate-800/30">
+                              <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center shrink-0', t.type === 'income' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-50 dark:bg-red-900/20 text-red-500')} style={cat ? { backgroundColor: `${cat.color}20`, color: cat.color } : {}}>
+                                <CatIcon className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-blue-900 dark:text-slate-100 text-sm truncate">{t.description || cat?.name || 'Sem descrição'}</p>
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  {cat && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${cat.color}20`, color: cat.color }}>{cat.name}</span>}
+                                  {acc && (
+                                    <span className="text-[10px] text-blue-400 dark:text-slate-500 font-medium flex items-center gap-0.5">
+                                      {t.paymentMethod === 'credit' ? <Icons.CreditCard className="w-3 h-3" /> : <Icons.Landmark className="w-3 h-3" />}
+                                      {acc.name}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <p className={cn('font-bold text-sm shrink-0', t.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
+                                {t.type === 'income' ? '+' : '−'}{formatCurrency(t.amount)}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Summary row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-sm">
           <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest mb-1">Total Receitas</p>
-          <p className="text-xl font-bold text-emerald-600">
-            {formatCurrency(days.reduce((sum, day) => sum + getDayData(day).totalIncome, 0))}
-          </p>
+          <p className="text-xl font-bold text-emerald-600">{formatCurrency(days.reduce((sum, day) => sum + getDayData(day).totalIncome, 0))}</p>
         </div>
         <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-sm">
           <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest mb-1">Total Despesas</p>
-          <p className="text-xl font-bold text-blue-900 dark:text-slate-100">
-            {formatCurrency(days.reduce((sum, day) => sum + getDayData(day).totalExpense, 0))}
-          </p>
+          <p className="text-xl font-bold text-blue-900 dark:text-slate-100">{formatCurrency(days.reduce((sum, day) => sum + getDayData(day).totalExpense, 0))}</p>
         </div>
         <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-sm">
           <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest mb-1">Saldo do Período</p>
-          <p className="text-xl font-bold text-blue-900 dark:text-slate-100">
-            {formatCurrency(days.reduce((sum, day) => sum + (getDayData(day).totalIncome - getDayData(day).totalExpense), 0))}
-          </p>
+          <p className="text-xl font-bold text-blue-900 dark:text-slate-100">{formatCurrency(days.reduce((sum, day) => sum + (getDayData(day).totalIncome - getDayData(day).totalExpense), 0))}</p>
         </div>
       </div>
+
+      {/* Upcoming card events this month */}
+      {upcomingCardEvents.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-sm p-5">
+          <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <Icons.CreditCard className="w-4 h-4 text-blue-400" />
+            Próximos eventos de cartão — {format(currentDate, 'MMMM', { locale: ptBR })}
+          </h4>
+          <div className="space-y-2">
+            {upcomingCardEvents.map((ev, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100/50 dark:border-slate-700/50">
+                <div className="flex items-center gap-3">
+                  <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold', ev.kind === 'closing' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600')}>
+                    {format(ev.date, 'd')}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900 dark:text-slate-100">{ev.cardName}</p>
+                    <p className={cn('text-xs font-medium', ev.kind === 'closing' ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400')}>
+                      {ev.kind === 'closing' ? 'Fechamento da fatura' : 'Vencimento — data de pagamento'}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-blue-400 dark:text-slate-500 uppercase tracking-wider">
+                  {format(ev.date, "dd MMM", { locale: ptBR })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1684,8 +2128,16 @@ const BANK_ICONS: IconName[] = ['Landmark','Building2','Wallet','CreditCard','Pi
 function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: Bank[]; accounts: BankAccount[]; transactions: Transaction[]; userId: string; onRefresh: () => Promise<void> }) {
   const [isAddingBank, setIsAddingBank] = useState(false);
   const [newBank, setNewBank] = useState({ name: '', color: '#3b82f6', icon: 'Landmark' as IconName });
-  const [addingAccTo, setAddingAccTo] = useState<string | null>(null); // bankId
+  const [addingAccTo, setAddingAccTo] = useState<string | null>(null);
   const [newAcc, setNewAcc] = useState({ ...EMPTY_ACC });
+  const [accError, setAccError] = useState('');
+
+  // Edit state
+  const [editingBankId, setEditingBankId] = useState<string | null>(null);
+  const [editBankForm, setEditBankForm] = useState({ name: '', color: '#3b82f6', icon: 'Landmark' as IconName });
+  const [editingAccId, setEditingAccId] = useState<string | null>(null);
+  const [editAccForm, setEditAccForm] = useState({ ...EMPTY_ACC });
+  const [editAccError, setEditAccError] = useState('');
 
   const typeLabels: Record<string, string> = {
     checking: 'Conta Corrente',
@@ -1704,6 +2156,21 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
     } catch (err) { console.error(err); }
   };
 
+  const startEditBank = (bank: Bank) => {
+    setEditingBankId(bank.id);
+    setEditBankForm({ name: bank.name, color: bank.color, icon: bank.icon as IconName });
+    setIsAddingBank(false);
+  };
+
+  const handleSaveBank = async (id: string) => {
+    if (!editBankForm.name.trim()) return;
+    try {
+      await banksApi.update(id, { name: editBankForm.name.trim(), color: editBankForm.color, icon: editBankForm.icon });
+      setEditingBankId(null);
+      await onRefresh();
+    } catch (err) { console.error(err); }
+  };
+
   const handleDeleteBank = async (id: string) => {
     try {
       await banksApi.delete(id);
@@ -1712,10 +2179,14 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
   };
 
   const handleAddAccount = async (bankId: string) => {
-    if (!newAcc.name) return;
+    if (!newAcc.name.trim()) {
+      setAccError('Informe o nome da conta ou cartão.');
+      return;
+    }
+    setAccError('');
     try {
       const data: any = {
-        name: newAcc.name,
+        name: newAcc.name.trim(),
         type: newAcc.type,
         balance: parseFloat(newAcc.balance) || 0,
         color: newAcc.color,
@@ -1732,7 +2203,54 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
       setAddingAccTo(null);
       setNewAcc({ ...EMPTY_ACC });
       await onRefresh();
-    } catch (err) { console.error(err); }
+    } catch (err: any) {
+      setAccError(err?.message ?? 'Erro ao salvar. Tente novamente.');
+    }
+  };
+
+  const startEditAcc = (acc: BankAccount) => {
+    setEditingAccId(acc.id);
+    setEditAccForm({
+      name: acc.name,
+      type: acc.type,
+      balance: String(acc.balance ?? ''),
+      color: acc.color,
+      icon: acc.icon as IconName,
+      creditLimit: acc.creditLimit != null ? String(acc.creditLimit) : '',
+      closingDay: acc.closingDay != null ? String(acc.closingDay) : '',
+      dueDay: acc.dueDay != null ? String(acc.dueDay) : '',
+      investmentType: acc.investmentType ?? 'cdb',
+    });
+    setEditAccError('');
+    setAddingAccTo(null);
+  };
+
+  const handleSaveAccount = async (id: string) => {
+    if (!editAccForm.name.trim()) {
+      setEditAccError('Informe o nome da conta ou cartão.');
+      return;
+    }
+    setEditAccError('');
+    try {
+      const data: any = {
+        name: editAccForm.name.trim(),
+        type: editAccForm.type,
+        balance: parseFloat(editAccForm.balance) || 0,
+        color: editAccForm.color,
+        icon: editAccForm.type === 'investment' ? 'TrendingUp' : editAccForm.type === 'credit' ? 'CreditCard' : editAccForm.icon,
+      };
+      if (editAccForm.type === 'credit') {
+        data.creditLimit = editAccForm.creditLimit ? parseFloat(editAccForm.creditLimit) : null;
+        data.closingDay = editAccForm.closingDay ? parseInt(editAccForm.closingDay) : null;
+        data.dueDay = editAccForm.dueDay ? parseInt(editAccForm.dueDay) : null;
+      }
+      if (editAccForm.type === 'investment') data.investmentType = editAccForm.investmentType;
+      await accountsApi.update(id, data);
+      setEditingAccId(null);
+      await onRefresh();
+    } catch (err: any) {
+      setEditAccError(err?.message ?? 'Erro ao salvar. Tente novamente.');
+    }
   };
 
   const handleDeleteAccount = async (id: string) => {
@@ -1741,68 +2259,6 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
       await onRefresh();
     } catch (err) { console.error(err); }
   };
-
-  // Sub-form para adicionar conta dentro de um banco
-  const AccountForm = ({ bankId, bankColor }: { bankId: string; bankColor: string }) => (
-    <div className="mt-4 pt-4 border-t border-blue-100/50 dark:border-slate-700/50 space-y-4">
-      <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100">Nova conta / cartão</h4>
-      <Input
-        label="Nome"
-        placeholder="Ex: Conta Corrente, Roxinho..."
-        value={newAcc.name}
-        onChange={e => setNewAcc({ ...newAcc, name: e.target.value })}
-      />
-      <RadioGroup
-        label="Tipo"
-        value={newAcc.type}
-        onChange={val => setNewAcc({ ...newAcc, type: val as BankAccount['type'] })}
-        options={[
-          { value: 'checking', label: 'Corrente' },
-          { value: 'savings', label: 'Poupança' },
-          { value: 'investment', label: 'Investimentos' },
-          { value: 'credit', label: 'Cartão' },
-        ]}
-      />
-      <Input
-        label={newAcc.type === 'credit' ? 'Fatura atual' : 'Saldo inicial'}
-        type="number"
-        placeholder="0,00"
-        value={newAcc.balance}
-        onChange={e => setNewAcc({ ...newAcc, balance: e.target.value })}
-      />
-      {newAcc.type === 'investment' && (
-        <Select
-          label="Tipo de Investimento"
-          value={newAcc.investmentType}
-          onChange={e => setNewAcc({ ...newAcc, investmentType: e.target.value as BankAccount['investmentType'] })}
-          options={[
-            { value: 'cdb', label: 'CDB / Renda Fixa' },
-            { value: 'stock', label: 'Ações' },
-            { value: 'fund', label: 'Fundos' },
-            { value: 'fii', label: 'FIIs' },
-            { value: 'other', label: 'Outros' },
-          ]}
-        />
-      )}
-      {newAcc.type === 'credit' && (
-        <div className="space-y-3 p-3 rounded-xl bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700">
-          <Input label="Limite de crédito" type="number" placeholder="0,00" value={newAcc.creditLimit} onChange={e => setNewAcc({ ...newAcc, creditLimit: e.target.value })} />
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Fechamento" type="number" placeholder="Dia" value={newAcc.closingDay} onChange={e => setNewAcc({ ...newAcc, closingDay: e.target.value })} />
-            <Input label="Vencimento" type="number" placeholder="Dia" value={newAcc.dueDay} onChange={e => setNewAcc({ ...newAcc, dueDay: e.target.value })} />
-          </div>
-        </div>
-      )}
-      <div className="flex gap-2">
-        <Button variant="secondary" className="flex-1" onClick={() => { setAddingAccTo(null); setNewAcc({ ...EMPTY_ACC }); }}>
-          Cancelar
-        </Button>
-        <Button className="flex-1" style={{ backgroundColor: bankColor }} onClick={() => handleAddAccount(bankId)}>
-          <Icons.Plus className="w-4 h-4" /> Adicionar
-        </Button>
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -1887,14 +2343,56 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
                     <p className="text-xs text-blue-500 dark:text-slate-400">{bankAccounts.length} {bankAccounts.length === 1 ? 'conta' : 'contas'} · Saldo total: <span className="font-semibold text-emerald-600">{formatCurrency(totalBalance)}</span></p>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteBank(bank.id)}
-                  className="p-2 text-blue-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
-                  title="Remover banco"
-                >
-                  <Icons.Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={() => editingBankId === bank.id ? setEditingBankId(null) : startEditBank(bank)}
+                    className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all"
+                    title="Editar banco"
+                  >
+                    <Icons.Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBank(bank.id)}
+                    className="p-2 text-blue-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all"
+                    title="Remover banco"
+                  >
+                    <Icons.Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
+
+              {/* Inline edit bank form */}
+              {editingBankId === bank.id && (
+                <div className="mb-4 p-4 rounded-xl bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700 space-y-4">
+                  <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100">Editar Banco</h4>
+                  <Input label="Nome" value={editBankForm.name} onChange={e => setEditBankForm({ ...editBankForm, name: e.target.value })} />
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-blue-900/70 dark:text-slate-400">Ícone</label>
+                    <div className="flex flex-wrap gap-2">
+                      {BANK_ICONS.map(icon => {
+                        const Ic = Icons[icon];
+                        return Ic ? (
+                          <button key={icon} onClick={() => setEditBankForm({ ...editBankForm, icon })} className={cn('w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all', editBankForm.icon === icon ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600' : 'border-blue-100 dark:border-slate-700 text-blue-400 dark:text-slate-500 hover:border-blue-300 dark:hover:border-slate-500')}>
+                            <Ic className="w-5 h-5" />
+                          </button>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-blue-900/70 dark:text-slate-400">Cor</label>
+                    <div className="flex flex-wrap gap-2">
+                      {BANK_COLORS.map(c => (
+                        <button key={c} onClick={() => setEditBankForm({ ...editBankForm, color: c })} className={cn('w-8 h-8 rounded-full border-4 transition-transform hover:scale-110', editBankForm.color === c ? 'border-blue-900 dark:border-white scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" className="flex-1" onClick={() => setEditingBankId(null)}>Cancelar</Button>
+                    <Button className="flex-1" onClick={() => handleSaveBank(bank.id)}><Icons.Check className="w-4 h-4" /> Salvar</Button>
+                  </div>
+                </div>
+              )}
 
               {/* Accounts list */}
               <div className="space-y-2">
@@ -1908,46 +2406,184 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
                       acc.balance);
 
                   return (
-                    <div key={acc.id} className="flex items-center justify-between p-3 rounded-xl bg-blue-50/40 dark:bg-slate-800/40 group/acc hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${bank.color}15`, color: bank.color }}>
-                          <Icon className="w-4 h-4" />
+                    <div key={acc.id} className="rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between p-3 bg-blue-50/40 dark:bg-slate-800/40 group/acc hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${bank.color}15`, color: bank.color }}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-blue-900 dark:text-slate-100">{acc.name}</p>
+                            <p className="text-xs text-blue-400 dark:text-slate-500">{typeLabels[acc.type]}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold text-blue-900 dark:text-slate-100">{acc.name}</p>
-                          <p className="text-xs text-blue-400 dark:text-slate-500">{typeLabels[acc.type]}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            {acc.type === 'credit' ? (
+                              <>
+                                <p className="text-sm font-bold text-blue-800 dark:text-slate-100">{formatCurrency(Math.abs(currentBalance))}</p>
+                                {acc.creditLimit && <p className="text-[10px] text-blue-400 dark:text-slate-500">Limite: {formatCurrency(acc.creditLimit)}</p>}
+                                {(acc.closingDay || acc.dueDay) && (
+                                  <p className="text-[10px] text-blue-400 dark:text-slate-500">
+                                    {acc.closingDay && `Fecha dia ${acc.closingDay}`}{acc.closingDay && acc.dueDay && ' · '}{acc.dueDay && `Vence dia ${acc.dueDay}`}
+                                  </p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-sm font-bold text-blue-900 dark:text-slate-100">{formatCurrency(currentBalance)}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover/acc:opacity-100 transition-all">
+                            <button
+                              onClick={() => editingAccId === acc.id ? setEditingAccId(null) : startEditAcc(acc)}
+                              className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-lg transition-all"
+                              title="Editar"
+                            >
+                              <Icons.Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAccount(acc.id)}
+                              className="p-1.5 text-blue-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
+                              title="Excluir"
+                            >
+                              <Icons.Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          {acc.type === 'credit' ? (
-                            <>
-                              <p className="text-sm font-bold text-blue-800 dark:text-slate-100">{formatCurrency(Math.abs(currentBalance))}</p>
-                              {acc.creditLimit && <p className="text-[10px] text-blue-400 dark:text-slate-500">Limite: {formatCurrency(acc.creditLimit)}</p>}
-                              {(acc.closingDay || acc.dueDay) && (
-                                <p className="text-[10px] text-blue-400 dark:text-slate-500">
-                                  {acc.closingDay && `Fecha dia ${acc.closingDay}`}{acc.closingDay && acc.dueDay && ' · '}{acc.dueDay && `Vence dia ${acc.dueDay}`}
-                                </p>
-                              )}
-                            </>
-                          ) : (
-                            <p className="text-sm font-bold text-blue-900 dark:text-slate-100">{formatCurrency(currentBalance)}</p>
+
+                      {/* Inline edit account form */}
+                      {editingAccId === acc.id && (
+                        <div className="p-4 bg-blue-50/30 dark:bg-slate-800/30 border-t border-blue-100 dark:border-slate-700 space-y-4">
+                          <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100">Editar {typeLabels[acc.type]}</h4>
+                          <Input
+                            label="Nome"
+                            value={editAccForm.name}
+                            onChange={e => { setEditAccForm({ ...editAccForm, name: e.target.value }); setEditAccError(''); }}
+                            error={!editAccForm.name.trim() && editAccError ? editAccError : undefined}
+                          />
+                          <RadioGroup
+                            label="Tipo"
+                            value={editAccForm.type}
+                            onChange={val => setEditAccForm({ ...editAccForm, type: val as BankAccount['type'] })}
+                            options={[
+                              { value: 'checking', label: 'Corrente' },
+                              { value: 'savings', label: 'Poupança' },
+                              { value: 'investment', label: 'Investimentos' },
+                              { value: 'credit', label: 'Cartão' },
+                            ]}
+                          />
+                          <Input
+                            label={editAccForm.type === 'credit' ? 'Fatura atual' : 'Saldo'}
+                            inputMode="decimal"
+                            placeholder="0,00"
+                            value={editAccForm.balance}
+                            onChange={e => setEditAccForm({ ...editAccForm, balance: e.target.value.replace(',', '.') })}
+                          />
+                          {editAccForm.type === 'investment' && (
+                            <Select
+                              label="Tipo de Investimento"
+                              value={editAccForm.investmentType}
+                              onChange={e => setEditAccForm({ ...editAccForm, investmentType: e.target.value as BankAccount['investmentType'] })}
+                              options={[
+                                { value: 'cdb', label: 'CDB / Renda Fixa' },
+                                { value: 'stock', label: 'Ações' },
+                                { value: 'fund', label: 'Fundos' },
+                                { value: 'fii', label: 'FIIs' },
+                                { value: 'other', label: 'Outros' },
+                              ]}
+                            />
                           )}
+                          {editAccForm.type === 'credit' && (
+                            <div className="space-y-3 p-3 rounded-xl bg-white/60 dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
+                              <Input label="Limite de crédito" inputMode="decimal" placeholder="0,00" value={editAccForm.creditLimit} onChange={e => setEditAccForm({ ...editAccForm, creditLimit: e.target.value.replace(',', '.') })} />
+                              <div className="grid grid-cols-2 gap-3">
+                                <Input label="Fechamento" type="number" placeholder="Dia" value={editAccForm.closingDay} onChange={e => setEditAccForm({ ...editAccForm, closingDay: e.target.value })} />
+                                <Input label="Vencimento" type="number" placeholder="Dia" value={editAccForm.dueDay} onChange={e => setEditAccForm({ ...editAccForm, dueDay: e.target.value })} />
+                              </div>
+                            </div>
+                          )}
+                          {editAccError && editAccForm.name.trim() && (
+                            <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                              <Icons.AlertCircle className="w-3.5 h-3.5" /> {editAccError}
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            <Button variant="secondary" className="flex-1" onClick={() => setEditingAccId(null)}>Cancelar</Button>
+                            <Button className="flex-1" onClick={() => handleSaveAccount(acc.id)}><Icons.Check className="w-4 h-4" /> Salvar</Button>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => handleDeleteAccount(acc.id)}
-                          className="p-1.5 text-blue-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg opacity-0 group-hover/acc:opacity-100 transition-all"
-                        >
-                          <Icons.Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
 
                 {/* Add account form or button */}
                 {addingAccTo === bank.id ? (
-                  <AccountForm bankId={bank.id} bankColor={bank.color} />
+                  <div className="mt-4 pt-4 border-t border-blue-100/50 dark:border-slate-700/50 space-y-4">
+                    <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100">Nova conta / cartão</h4>
+                    <Input
+                      label="Nome"
+                      placeholder="Ex: Conta Corrente, Roxinho..."
+                      value={newAcc.name}
+                      onChange={e => { setNewAcc({ ...newAcc, name: e.target.value }); setAccError(''); }}
+                      error={!newAcc.name.trim() && accError ? accError : undefined}
+                    />
+                    <RadioGroup
+                      label="Tipo"
+                      value={newAcc.type}
+                      onChange={val => setNewAcc({ ...newAcc, type: val as BankAccount['type'] })}
+                      options={[
+                        { value: 'checking', label: 'Corrente' },
+                        { value: 'savings', label: 'Poupança' },
+                        { value: 'investment', label: 'Investimentos' },
+                        { value: 'credit', label: 'Cartão' },
+                      ]}
+                    />
+                    <Input
+                      label={newAcc.type === 'credit' ? 'Fatura atual' : 'Saldo inicial'}
+                      inputMode="decimal"
+                      placeholder="0,00"
+                      value={newAcc.balance}
+                      onChange={e => setNewAcc({ ...newAcc, balance: e.target.value.replace(',', '.') })}
+                    />
+                    {newAcc.type === 'investment' && (
+                      <Select
+                        label="Tipo de Investimento"
+                        value={newAcc.investmentType}
+                        onChange={e => setNewAcc({ ...newAcc, investmentType: e.target.value as BankAccount['investmentType'] })}
+                        options={[
+                          { value: 'cdb', label: 'CDB / Renda Fixa' },
+                          { value: 'stock', label: 'Ações' },
+                          { value: 'fund', label: 'Fundos' },
+                          { value: 'fii', label: 'FIIs' },
+                          { value: 'other', label: 'Outros' },
+                        ]}
+                      />
+                    )}
+                    {newAcc.type === 'credit' && (
+                      <div className="space-y-3 p-3 rounded-xl bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700">
+                        <Input label="Limite de crédito" inputMode="decimal" placeholder="0,00" value={newAcc.creditLimit} onChange={e => setNewAcc({ ...newAcc, creditLimit: e.target.value.replace(',', '.') })} />
+                        <div className="grid grid-cols-2 gap-3">
+                          <Input label="Fechamento" type="number" placeholder="Dia" value={newAcc.closingDay} onChange={e => setNewAcc({ ...newAcc, closingDay: e.target.value })} />
+                          <Input label="Vencimento" type="number" placeholder="Dia" value={newAcc.dueDay} onChange={e => setNewAcc({ ...newAcc, dueDay: e.target.value })} />
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button variant="secondary" className="flex-1" onClick={() => { setAddingAccTo(null); setNewAcc({ ...EMPTY_ACC }); setAccError(''); }}>
+                        Cancelar
+                      </Button>
+                      <Button className="flex-1" style={{ backgroundColor: bank.color }} onClick={() => handleAddAccount(bank.id)}>
+                        <Icons.Plus className="w-4 h-4" /> Adicionar
+                      </Button>
+                    </div>
+                    {accError && newAcc.name.trim() && (
+                      <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                        <Icons.AlertCircle className="w-3.5 h-3.5" /> {accError}
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <button
                     onClick={() => { setAddingAccTo(bank.id); setNewAcc({ ...EMPTY_ACC }); }}
@@ -1979,6 +2615,173 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
         </div>
       )}
     </div>
+  );
+}
+
+function TransferenciaModal({ accounts, prefillToId, prefillAmount, onClose, onRefresh }: {
+  accounts: BankAccount[];
+  prefillToId?: string;
+  prefillAmount?: number;
+  onClose: () => void;
+  onRefresh: () => Promise<void>;
+}) {
+  const prefillAcc = prefillToId ? accounts.find(a => a.id === prefillToId) : undefined;
+  const isBillPayment = prefillAcc?.type === 'credit';
+
+  const [fromId, setFromId] = useState('');
+  const [toId, setToId] = useState(prefillToId || '');
+  const [amount, setAmount] = useState(prefillAmount ? String(prefillAmount) : '');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const nonCreditAccounts = accounts.filter(a => a.type !== 'credit');
+  const toOptions = isBillPayment
+    ? accounts.filter(a => a.type === 'credit')
+    : accounts;
+
+  const handleSubmit = async () => {
+    const amt = parseFloat(amount.replace(',', '.'));
+    if (!fromId) { setError('Selecione a conta de origem.'); return; }
+    if (!toId) { setError('Selecione a conta de destino.'); return; }
+    if (fromId === toId) { setError('Origem e destino não podem ser iguais.'); return; }
+    if (!amt || amt <= 0) { setError('Informe um valor válido.'); return; }
+    setError('');
+    setLoading(true);
+    try {
+      const fromAcc = accounts.find(a => a.id === fromId);
+      const toAcc = accounts.find(a => a.id === toId);
+      const isBill = toAcc?.type === 'credit';
+      const desc = description.trim() || (isBill ? `Pagamento fatura — ${toAcc?.name}` : `Transferência: ${fromAcc?.name} → ${toAcc?.name}`);
+
+      await Promise.all([
+        transactionsApi.create({ type: 'expense', amount: amt, accountId: fromId, date, description: desc, paymentMethod: 'debit' }),
+        transactionsApi.create({ type: 'income', amount: amt, accountId: toId, date, description: isBill ? `Pagamento fatura recebido` : desc }),
+      ]);
+
+      await onRefresh();
+      onClose();
+    } catch (err: any) {
+      setError(err?.message ?? 'Erro ao realizar transferência.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+      >
+        {/* Header */}
+        <div className={cn('px-6 pt-6 pb-4', isBillPayment ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-blue-50/50 dark:bg-slate-800/50')}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center', isBillPayment ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600')}>
+                {isBillPayment ? <Icons.CreditCard className="w-5 h-5" /> : <Icons.ArrowUpRight className="w-5 h-5 rotate-45" />}
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-blue-900 dark:text-slate-100">
+                  {isBillPayment ? `Pagar Fatura — ${prefillAcc?.name}` : 'Transferência entre Contas'}
+                </h2>
+                <p className="text-xs text-blue-500 dark:text-slate-400 font-medium">
+                  {isBillPayment ? 'Débito na conta de origem + crédito no cartão' : 'Débito na origem e crédito no destino'}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-800 transition-colors">
+              <Icons.X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* From */}
+          <Select
+            label="Conta de origem (débito)"
+            value={fromId}
+            onChange={e => setFromId(e.target.value)}
+            options={[
+              { value: '', label: 'Selecione...' },
+              ...nonCreditAccounts.map(a => ({ value: a.id, label: a.name })),
+            ]}
+          />
+
+          {/* To */}
+          {!isBillPayment && (
+            <Select
+              label="Conta de destino (crédito)"
+              value={toId}
+              onChange={e => setToId(e.target.value)}
+              options={[
+                { value: '', label: 'Selecione...' },
+                ...toOptions.filter(a => a.id !== fromId).map(a => ({ value: a.id, label: `${a.name}${a.type === 'credit' ? ' (Cartão)' : ''}` })),
+              ]}
+            />
+          )}
+
+          {/* Amount */}
+          <Input
+            label="Valor"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={amount}
+            onChange={e => setAmount(e.target.value.replace(',', '.'))}
+          />
+
+          {/* Date */}
+          <Input
+            label="Data"
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+          />
+
+          {/* Description */}
+          <Input
+            label="Descrição (opcional)"
+            placeholder={isBillPayment ? `Pagamento fatura — ${prefillAcc?.name}` : 'Ex: Transferência para poupança'}
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+          />
+
+          {error && (
+            <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+              <Icons.AlertCircle className="w-3.5 h-3.5" /> {error}
+            </p>
+          )}
+
+          {/* Summary */}
+          {fromId && toId && parseFloat(amount) > 0 && (
+            <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700 text-xs font-medium text-blue-700 dark:text-slate-300 space-y-1">
+              <p>Débito em <span className="font-bold">{accounts.find(a => a.id === fromId)?.name}</span>: <span className="text-red-600 font-bold">−{formatCurrency(parseFloat(amount) || 0)}</span></p>
+              <p>Crédito em <span className="font-bold">{accounts.find(a => a.id === toId)?.name}</span>: <span className="text-emerald-600 font-bold">+{formatCurrency(parseFloat(amount) || 0)}</span></p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <Button variant="secondary" className="flex-1" onClick={onClose}>Cancelar</Button>
+            <Button
+              className={cn('flex-2', isBillPayment ? 'bg-emerald-600 hover:bg-emerald-700' : '')}
+              onClick={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? '...' : isBillPayment ? 'Pagar Fatura' : 'Confirmar Transferência'}
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
