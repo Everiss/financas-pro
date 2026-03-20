@@ -148,4 +148,22 @@ export class OpenFinanceService {
     const qs = search ? `?name=${encodeURIComponent(search)}` : '';
     return this.pluggyFetch<{ results: unknown[] }>(`/connectors${qs}`);
   }
+
+  /** Cria um item (conexão bancária) diretamente — útil para sandbox */
+  async createItem(connectorId: number, parameters: Record<string, string>) {
+    return this.pluggyFetch<{ id: string; status: string; connector: { name: string; primaryColor: string; logoImageUrl: string } }>('/items', {
+      method: 'POST',
+      body: JSON.stringify({ connectorId, parameters }),
+    });
+  }
+
+  /** Retorna detalhes atualizados de um item */
+  async waitForItem(itemId: string, maxAttempts = 10): Promise<unknown> {
+    for (let i = 0; i < maxAttempts; i++) {
+      const item = await this.pluggyFetch<{ id: string; status: string; error?: string }>(`/items/${itemId}`);
+      if (item.status !== 'UPDATING') return item;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    return this.pluggyFetch(`/items/${itemId}`);
+  }
 }

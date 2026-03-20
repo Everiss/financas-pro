@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseGuards, Request } from '@nestjs/common';
 import { OpenFinanceService } from './openfinance.service';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 
@@ -30,6 +30,18 @@ export class OpenFinanceController {
   @Get('accounts')
   async getAccounts(@Query('itemId') itemId: string): Promise<unknown[]> {
     return this.openFinance.getAccounts(itemId);
+  }
+
+  /** Cria um item diretamente (sandbox / conexão manual) */
+  @Post('items')
+  createItem(@Body() body: { connectorId: number; parameters: Record<string, string> }) {
+    return this.openFinance.createItem(body.connectorId, body.parameters);
+  }
+
+  /** Aguarda item terminar de sincronizar e retorna status final */
+  @Get('items/:itemId/wait')
+  waitForItem(@Param('itemId') itemId: string) {
+    return this.openFinance.waitForItem(itemId);
   }
 
   /** Retorna transações de uma conta conectada */

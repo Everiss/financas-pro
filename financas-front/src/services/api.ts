@@ -143,6 +143,9 @@ export const openFinanceApi = {
     const qs = new URLSearchParams({ accountId, ...(from && { from }), ...(to && { to }) });
     return request<PluggyTransaction[]>(`/openfinance/transactions?${qs}`);
   },
+  createItem: (connectorId: number, parameters: Record<string, string>) =>
+    request<PluggyItem>('/openfinance/items', { method: 'POST', body: JSON.stringify({ connectorId, parameters }) }),
+  waitForItem: (itemId: string) => request<PluggyItem>(`/openfinance/items/${itemId}/wait`),
 };
 
 export interface PluggyConnector {

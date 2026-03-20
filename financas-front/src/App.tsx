@@ -1558,9 +1558,18 @@ function CategoryManager({ categories, userId, onRefresh }: { categories: Catego
 
 // ─── Open Finance View ──────────────────────────────────────────────────────
 
+// Conectores sandbox pré-definidos da Pluggy
+const SANDBOX_CONNECTORS = [
+  { id: 0, name: 'Pluggy Bank (Sandbox)', fields: [{ name: 'user', label: 'Usuário', placeholder: 'user-ok' }, { name: 'password', label: 'Senha', placeholder: 'password-ok', type: 'password' }] },
+  { id: 1, name: 'Pluggy Bank 2 (Sandbox)', fields: [{ name: 'user', label: 'Usuário', placeholder: 'user-ok' }, { name: 'password', label: 'Senha', placeholder: 'password-ok', type: 'password' }] },
+];
+
 function OpenFinanceView() {
   const [connectToken, setConnectToken] = useState<string | null>(null);
   const [showWidget, setShowWidget] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [manualConnectorId, setManualConnectorId] = useState(0);
+  const [manualFields, setManualFields] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [connectedItems, setConnectedItems] = useState<{ itemId: string; item?: PluggyItem; accounts: PluggyAccount[] }[]>(() => {
@@ -1588,12 +1597,32 @@ function OpenFinanceView() {
     }
   };
 
-  const handleSuccess = async (itemId: string) => {
+  const handleManualConnect = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const connector = SANDBOX_CONNECTORS.find(c => c.id === manualConnectorId)!;
+      const params: Record<string, string> = {};
+      connector.fields.forEach(f => { params[f.name] = manualFields[f.name] || ''; });
+      const item = await openFinanceApi.createItem(manualConnectorId, params);
+      setShowManual(false);
+      setManualFields({});
+      // Aguarda sincronização
+      const finalItem = await openFinanceApi.waitForItem(item.id) as PluggyItem;
+      await handleSuccess(item.id, finalItem);
+    } catch (e: any) {
+      setError(e.message ?? 'Erro ao conectar.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSuccess = async (itemId: string, preloadedItem?: PluggyItem) => {
     setShowWidget(false);
     setConnectToken(null);
     try {
       const [item, accounts] = await Promise.all([
-        openFinanceApi.getItem(itemId),
+        preloadedItem ? Promise.resolve(preloadedItem) : openFinanceApi.getItem(itemId),
         openFinanceApi.getAccounts(itemId),
       ]);
       saveItems([...connectedItems.filter(i => i.itemId !== itemId), { itemId, item, accounts }]);
@@ -1632,14 +1661,24 @@ function OpenFinanceView() {
           <h3 className="text-xl font-bold">Open Finance Brasil</h3>
           <p className="text-blue-300 text-sm mt-1">Conecte suas contas bancárias reais com segurança e consentimento.</p>
         </div>
-        <button
-          onClick={handleConnect}
-          disabled={loading}
-          className="flex items-center gap-2 px-5 py-3 bg-white text-blue-900 font-bold rounded-2xl hover:bg-blue-50 transition-colors shrink-0 disabled:opacity-60"
-        >
-          {loading ? <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-900 rounded-full animate-spin" /> : <Icons.Plus className="w-4 h-4" />}
-          Conectar banco
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => { setShowManual(true); setError(''); }}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-3 bg-white/20 text-white font-semibold rounded-2xl hover:bg-white/30 transition-colors shrink-0 disabled:opacity-60 text-sm"
+          >
+            <Icons.Settings className="w-4 h-4" />
+            Sandbox manual
+          </button>
+          <button
+            onClick={handleConnect}
+            disabled={loading}
+            className="flex items-center gap-2 px-5 py-3 bg-white text-blue-900 font-bold rounded-2xl hover:bg-blue-50 transition-colors shrink-0 disabled:opacity-60"
+          >
+            {loading ? <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-900 rounded-full animate-spin" /> : <Icons.Plus className="w-4 h-4" />}
+            Conectar banco
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -1648,6 +1687,68 @@ function OpenFinanceView() {
           {error}
         </div>
       )}
+
+      {/* Formulário de conexão manual (sandbox) */}
+      <AnimatePresence>
+        {showManual && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={() => setShowManual(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 20 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 w-full max-w-sm space-y-5"
+              onClick={e => e.stopPropagation()}
+            >
+              <div>
+                <h3 className="font-bold text-blue-900 dark:text-slate-100 text-base">Conexão Manual (Sandbox)</h3>
+                <p className="text-xs text-blue-500 dark:text-slate-400 mt-1">Use as credenciais de teste da Pluggy.</p>
+              </div>
+
+              {/* Seletor de conector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-blue-900/70 dark:text-slate-400">Conector</label>
+                <select
+                  value={manualConnectorId}
+                  onChange={e => { setManualConnectorId(Number(e.target.value)); setManualFields({}); }}
+                  className="w-full text-sm px-3 py-2.5 rounded-xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-blue-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  {SANDBOX_CONNECTORS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              {/* Campos dinâmicos do conector */}
+              {SANDBOX_CONNECTORS.find(c => c.id === manualConnectorId)?.fields.map(field => (
+                <div key={field.name} className="space-y-1.5">
+                  <label className="text-xs font-semibold text-blue-900/70 dark:text-slate-400">{field.label}</label>
+                  <input
+                    type={field.type ?? 'text'}
+                    placeholder={field.placeholder}
+                    value={manualFields[field.name] ?? ''}
+                    onChange={e => setManualFields(prev => ({ ...prev, [field.name]: e.target.value }))}
+                    className="w-full text-sm px-3 py-2.5 rounded-xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-blue-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+              ))}
+
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setShowManual(false)} className="flex-1 py-2.5 rounded-2xl border border-blue-200 dark:border-slate-700 text-sm font-semibold text-blue-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleManualConnect}
+                  disabled={loading}
+                  className="flex-1 py-2.5 rounded-2xl bg-blue-900 dark:bg-blue-600 text-white text-sm font-bold hover:bg-blue-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {loading ? <div className="w-4 h-4 border-2 border-blue-300 border-t-white rounded-full animate-spin" /> : null}
+                  Conectar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Pluggy Connect Widget (SDK oficial) */}
       {showWidget && connectToken && (
