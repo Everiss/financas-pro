@@ -31,12 +31,16 @@ export class AuthService implements OnModuleInit {
       });
 
       if (!user) {
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14 dias de trial PRO
+
         user = await this.prisma.user.create({
           data: {
             firebaseUid: decoded.uid,
             email: decoded.email ?? '',
             displayName: decoded.name ?? decoded.email ?? 'Usuário',
             photoURL: decoded.picture ?? null,
+            trialEndsAt,
           },
         });
       }

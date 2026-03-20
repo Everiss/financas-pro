@@ -14,6 +14,7 @@ import { RemindersModule } from './reminders/reminders.module';
 import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
 import { OpenFinanceModule } from './openfinance/openfinance.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { OpenFinanceModule } from './openfinance/openfinance.module';
     AiModule,
     AuditModule,
     OpenFinanceModule,
+    SubscriptionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

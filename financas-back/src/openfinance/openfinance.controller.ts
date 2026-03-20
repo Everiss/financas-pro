@@ -1,8 +1,10 @@
 import { Controller, Get, Post, Body, Query, Param, UseGuards, Request } from '@nestjs/common';
 import { OpenFinanceService } from './openfinance.service';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
+import { PlanGuard, RequireFeature } from '../subscription/plan.guard';
 
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(FirebaseAuthGuard, PlanGuard)
+@RequireFeature('openFinance')
 @Controller('openfinance')
 export class OpenFinanceController {
   constructor(private openFinance: OpenFinanceService) {}

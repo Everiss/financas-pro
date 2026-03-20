@@ -122,6 +122,27 @@ export const remindersApi = {
     request<void>(`/reminders/${id}`, { method: 'DELETE' }),
 };
 
+// --- Subscription ---
+
+export const subscriptionApi = {
+  getStatus: () => request<SubscriptionStatus>('/subscription/status'),
+  checkout: (priceId: string) =>
+    request<{ url: string }>('/subscription/checkout', { method: 'POST', body: JSON.stringify({ priceId }) }),
+  portal: () =>
+    request<{ url: string }>('/subscription/portal', { method: 'POST' }),
+};
+
+export interface SubscriptionStatus {
+  plan: 'FREE' | 'PRO' | 'FAMILY';
+  trialEndsAt: string | null;
+  trialActive: boolean;
+  subscription: {
+    status: string;
+    currentPeriodEnd: string;
+    cancelAtPeriodEnd: boolean;
+  } | null;
+}
+
 // --- AI ---
 
 export const aiApi = {
@@ -188,6 +209,8 @@ export interface PluggyTransaction {
 
 // --- Audit Logs ---
 
+// --- Audit Logs ---
+
 export const auditApi = {
   getAll: (params?: { entity?: string; action?: string; limit?: number }) => {
     const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
@@ -217,6 +240,8 @@ export interface UserResponse {
   email: string;
   photoURL?: string;
   currency: string;
+  plan: 'FREE' | 'PRO' | 'FAMILY';
+  trialEndsAt?: string | null;
 }
 
 export interface UpdateUserPayload {

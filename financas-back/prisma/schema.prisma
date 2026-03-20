@@ -8,14 +8,17 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(uuid())
-  firebaseUid String   @unique @map("firebase_uid")
-  displayName String   @map("display_name")
-  email       String   @unique
-  photoURL    String?  @map("photo_url") @db.Text
-  currency    String   @default("BRL")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                String    @id @default(uuid())
+  firebaseUid       String    @unique @map("firebase_uid")
+  displayName       String    @map("display_name")
+  email             String    @unique
+  photoURL          String?   @map("photo_url") @db.Text
+  currency          String    @default("BRL")
+  plan              PlanType  @default(FREE)
+  stripeCustomerId  String?   @unique @map("stripe_customer_id")
+  trialEndsAt       DateTime? @map("trial_ends_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   banks           Bank[]
   accounts        BankAccount[]
@@ -25,8 +28,25 @@ model User {
   goals           Goal[]
   aiInsightCache  AiInsightCache?
   auditLogs       AuditLog[]
+  subscription    Subscription?
 
   @@map("users")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String             @unique @map("user_id")
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSubscriptionId String             @unique @map("stripe_subscription_id")
+  stripePriceId        String             @map("stripe_price_id")
+  status               SubscriptionStatus
+  currentPeriodStart   DateTime           @map("current_period_start")
+  currentPeriodEnd     DateTime           @map("current_period_end")
+  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  @@map("subscriptions")
 }
 
 model Bank {
@@ -233,6 +253,20 @@ enum AuditEntity {
   GOAL
   REMINDER
   CATEGORY
+}
+
+enum PlanType {
+  FREE
+  PRO
+  FAMILY
+}
+
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  canceled
+  unpaid
 }
 
 enum GoalCategory {
