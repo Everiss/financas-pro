@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { PluggyConnect } from 'react-pluggy-connect';
 import {
   auth,
@@ -1358,22 +1359,44 @@ function TransactionManager({ transactions, categories, accounts, onRefresh }: {
     }
   };
 
+  const handleExport = () => {
+    const rows = filtered.map(t => ({
+      Data: formatDate(t.date.toDate()),
+      Descrição: t.description || '-',
+      Tipo: t.type === 'income' ? 'Receita' : 'Despesa',
+      Categoria: categories.find(c => c.id === t.category)?.name || 'Outros',
+      Conta: accounts.find(a => a.id === t.accountId)?.name || '-',
+      'Forma de Pagamento': t.paymentMethod === 'credit' ? 'Crédito' : t.paymentMethod === 'debit' ? 'Débito' : '-',
+      Valor: t.type === 'income' ? t.amount : -t.amount,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Transações');
+    XLSX.writeFile(wb, `transacoes_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400" />
-          <Input 
-            placeholder="Buscar transações..." 
-            className="pl-10" 
+          <Input
+            placeholder="Buscar transações..."
+            className="pl-10"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant={filter === 'all' ? 'primary' : 'secondary'} onClick={() => setFilter('all')} className="px-3 py-2 text-xs">Tudo</Button>
           <Button variant={filter === 'income' ? 'primary' : 'secondary'} onClick={() => setFilter('income')} className="px-3 py-2 text-xs">Receitas</Button>
           <Button variant={filter === 'expense' ? 'primary' : 'secondary'} onClick={() => setFilter('expense')} className="px-3 py-2 text-xs">Despesas</Button>
+          <Button variant="secondary" onClick={handleExport} className="px-3 py-2 text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
+            <Icons.Download className="w-3.5 h-3.5" />
+            Exportar Excel
+          </Button>
         </div>
       </div>
 
