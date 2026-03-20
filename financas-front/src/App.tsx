@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-const PluggyConnect = lazy(() => import('react-pluggy-connect').then(m => ({ default: m.PluggyConnect })));
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { PluggyConnect } from 'react-pluggy-connect';
 import {
   auth,
   googleProvider,
@@ -1651,14 +1651,13 @@ function OpenFinanceView() {
 
       {/* Pluggy Connect Widget (SDK oficial) */}
       {showWidget && connectToken && (
-        <Suspense fallback={null}>
-          <PluggyConnect
-            connectToken={connectToken}
-            onSuccess={({ item }: { item: { id: string } }) => handleSuccess(item.id)}
-            onClose={() => { setShowWidget(false); setConnectToken(null); }}
-            onError={(err: { message: string }) => { setError(err.message ?? 'Erro na conexão.'); setShowWidget(false); setConnectToken(null); }}
-          />
-        </Suspense>
+        <PluggyConnect
+          connectToken={connectToken}
+          includeSandbox={true}
+          onSuccess={({ item }) => handleSuccess(item.id)}
+          onClose={() => { setShowWidget(false); setConnectToken(null); }}
+          onError={(err) => { setError(err.message ?? 'Erro na conexão.'); setShowWidget(false); setConnectToken(null); }}
+        />
       )}
 
       {/* Connected banks */}
