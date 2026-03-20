@@ -12,6 +12,7 @@ import { BanksModule } from './banks/banks.module';
 import { GoalsModule } from './goals/goals.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { AiModule } from './ai/ai.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AiModule } from './ai/ai.module';
     GoalsModule,
     RemindersModule,
     AiModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],

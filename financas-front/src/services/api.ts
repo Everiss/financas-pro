@@ -129,6 +129,26 @@ export const aiApi = {
   getGoalsStrategy: () => request<AiGoalsStrategy>('/ai/goals-strategy', { method: 'POST' }),
 };
 
+// --- Audit Logs ---
+
+export const auditApi = {
+  getAll: (params?: { entity?: string; action?: string; limit?: number }) => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+    return request<AuditLogResponse[]>(`/audit-logs${qs}`);
+  },
+};
+
+export interface AuditLogResponse {
+  id: string;
+  userId: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  entity: 'TRANSACTION' | 'ACCOUNT' | 'BANK' | 'GOAL' | 'REMINDER' | 'CATEGORY';
+  entityId?: string;
+  payload?: string;
+  ip?: string;
+  createdAt: string;
+}
+
 // ============================================================
 // Types (espelham os tipos do backend / frontend existente)
 // ============================================================

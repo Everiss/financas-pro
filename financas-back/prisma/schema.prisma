@@ -24,6 +24,7 @@ model User {
   reminders       Reminder[]
   goals           Goal[]
   aiInsightCache  AiInsightCache?
+  auditLogs       AuditLog[]
 
   @@map("users")
 }
@@ -137,6 +138,22 @@ model Reminder {
   @@map("reminders")
 }
 
+model AuditLog {
+  id        String      @id @default(uuid())
+  userId    String      @map("user_id")
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    AuditAction
+  entity    AuditEntity
+  entityId  String?     @map("entity_id")
+  payload   String?     @db.Text
+  ip        String?
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
 model AiInsightCache {
   id           String   @id @default(uuid())
   userId       String   @unique @map("user_id")
@@ -201,6 +218,21 @@ enum FrequencyType {
   weekly
   monthly
   yearly
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum AuditEntity {
+  TRANSACTION
+  ACCOUNT
+  BANK
+  GOAL
+  REMINDER
+  CATEGORY
 }
 
 enum GoalCategory {

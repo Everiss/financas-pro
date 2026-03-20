@@ -8,9 +8,9 @@ import {
   User
 } from './firebase';
 import {
-  transactionsApi, categoriesApi, accountsApi, banksApi, goalsApi, remindersApi, usersApi,
+  transactionsApi, categoriesApi, accountsApi, banksApi, goalsApi, remindersApi, usersApi, auditApi,
   TransactionResponse, CategoryResponse, AccountResponse, BankResponse, GoalResponse, ReminderResponse,
-  AiGoalsStrategy, CreateTransactionPayload
+  AiGoalsStrategy, CreateTransactionPayload, AuditLogResponse
 } from './services/api';
 import { Transaction, Category, UserProfile, Reminder, BankAccount, Bank, Goal } from './types';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -307,7 +307,7 @@ export default function App() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit'>('dashboard');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transferenciaModal, setTransferenciaModal] = useState<{ open: boolean; prefillToId?: string; prefillAmount?: number }>({ open: false });
   const [dashboardMonth, setDashboardMonth] = useState(() => {
@@ -468,6 +468,7 @@ export default function App() {
               <NavButton active={activeTab === 'reminders'} onClick={() => setActiveTab('reminders')} icon="List" label="Lembretes" />
               <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon="Landmark" label="Contas" />
               <NavButton active={activeTab === 'goals'} onClick={() => setActiveTab('goals')} icon="Target" label="Metas" />
+              <NavButton active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon="List" label="Histórico" />
             </div>
 
             <div className="hidden md:block pt-4 border-t border-blue-100 dark:border-slate-700 mt-auto">
@@ -507,6 +508,7 @@ export default function App() {
                   {activeTab === 'reminders' && 'Lembretes'}
                   {activeTab === 'accounts' && 'Minhas Contas'}
                   {activeTab === 'goals' && 'Minhas Metas'}
+                  {activeTab === 'audit' && 'Histórico de Operações'}
                 </h2>
                 <p className="text-blue-500 dark:text-slate-400 font-medium mt-1">
                   {activeTab === 'dashboard' && `Bem-vindo de volta, ${user.displayName?.split(' ')[0]}!`}
@@ -517,6 +519,7 @@ export default function App() {
                   {activeTab === 'reminders' && 'Gerencie pagamentos recorrentes e futuros.'}
                   {activeTab === 'accounts' && 'Gerencie suas contas bancárias e cartões.'}
                   {activeTab === 'goals' && 'Planeje e acompanhe seus sonhos financeiros.'}
+                  {activeTab === 'audit' && 'Rastreabilidade de todas as operações realizadas.'}
                 </p>
               </div>
               <div className="flex items-center gap-3 self-end sm:self-auto">
@@ -644,6 +647,12 @@ export default function App() {
               {activeTab === 'goals' && (
                 <motion.div key="goals" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                   <GoalsView goals={goals} userId={user.uid} transactions={transactions} accounts={accounts} categories={categories} onRefresh={fetchAllData} />
+                </motion.div>
+              )}
+
+              {activeTab === 'audit' && (
+                <motion.div key="audit" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                  <AuditLogView />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1536,6 +1545,208 @@ function CategoryManager({ categories, userId, onRefresh }: { categories: Catego
     </div>
   );
 }
+
+// ─── Audit Log View ─────────────────────────────────────────────────────────
+
+const ACTION_LABELS: Record<string, string> = {
+  CREATE: 'Criação',
+  UPDATE: 'Atualização',
+  DELETE: 'Exclusão',
+};
+
+const ENTITY_LABELS: Record<string, string> = {
+  TRANSACTION: 'Transação',
+  ACCOUNT: 'Conta',
+  BANK: 'Banco',
+  GOAL: 'Meta',
+  REMINDER: 'Lembrete',
+  CATEGORY: 'Categoria',
+};
+
+const ACTION_COLORS: Record<string, string> = {
+  CREATE: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
+  UPDATE: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+  DELETE: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+};
+
+const ENTITY_ICONS: Record<string, IconName> = {
+  TRANSACTION: 'ArrowUpRight',
+  ACCOUNT: 'Wallet',
+  BANK: 'Landmark',
+  GOAL: 'Target',
+  REMINDER: 'Calendar',
+  CATEGORY: 'Tag',
+};
+
+function AuditLogView() {
+  const [logs, setLogs] = useState<AuditLogResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterEntity, setFilterEntity] = useState('');
+  const [filterAction, setFilterAction] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    auditApi.getAll({ limit: 200 })
+      .then(setLogs)
+      .catch(() => setLogs([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = useMemo(() => logs.filter(l =>
+    (!filterEntity || l.entity === filterEntity) &&
+    (!filterAction || l.action === filterAction)
+  ), [logs, filterEntity, filterAction]);
+
+  const grouped = useMemo(() => {
+    const groups: Record<string, AuditLogResponse[]> = {};
+    filtered.forEach(log => {
+      const date = new Date(log.createdAt).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+      (groups[date] = groups[date] || []).push(log);
+    });
+    return Object.entries(groups);
+  }, [filtered]);
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <select
+          value={filterEntity}
+          onChange={e => setFilterEntity(e.target.value)}
+          className="text-sm px-3 py-2 rounded-xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-blue-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          <option value="">Todas entidades</option>
+          {Object.entries(ENTITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select
+          value={filterAction}
+          onChange={e => setFilterAction(e.target.value)}
+          className="text-sm px-3 py-2 rounded-xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-blue-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          <option value="">Todas ações</option>
+          {Object.entries(ACTION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <span className="text-xs text-blue-400 dark:text-slate-500 self-center font-medium">{filtered.length} registro{filtered.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      {loading && (
+        <div className="flex items-center justify-center py-16">
+          <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+        </div>
+      )}
+
+      {!loading && filtered.length === 0 && (
+        <div className="py-16 text-center">
+          <div className="w-14 h-14 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Icons.List className="w-6 h-6 text-blue-300 dark:text-slate-500" />
+          </div>
+          <p className="text-sm text-blue-400 dark:text-slate-500 font-medium">Nenhuma operação registrada ainda.</p>
+        </div>
+      )}
+
+      {/* Timeline grouped by day */}
+      <div className="space-y-8">
+        {grouped.map(([date, dayLogs]) => (
+          <div key={date}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px flex-1 bg-blue-100 dark:bg-slate-700" />
+              <span className="text-xs font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest capitalize whitespace-nowrap">{date}</span>
+              <div className="h-px flex-1 bg-blue-100 dark:bg-slate-700" />
+            </div>
+
+            <div className="relative">
+              {/* Vertical line */}
+              <div className="absolute left-5 top-0 bottom-0 w-px bg-blue-100 dark:bg-slate-700" />
+
+              <div className="space-y-3">
+                {dayLogs.map(log => {
+                  const EntityIcon = Icons[ENTITY_ICONS[log.entity] ?? 'List'];
+                  const isExpanded = expandedId === log.id;
+                  let parsedPayload: Record<string, unknown> | null = null;
+                  try { parsedPayload = log.payload ? JSON.parse(log.payload) : null; } catch {}
+
+                  return (
+                    <div key={log.id} className="flex gap-4">
+                      {/* Timeline dot */}
+                      <div className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0 z-10 border-2 border-white dark:border-slate-900',
+                        log.action === 'CREATE' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
+                        log.action === 'UPDATE' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+                        'bg-red-100 dark:bg-red-900/40 text-red-600'
+                      )}>
+                        <EntityIcon className="w-4 h-4" />
+                      </div>
+
+                      {/* Card */}
+                      <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl border border-blue-100 dark:border-slate-700 overflow-hidden mb-1">
+                        <div
+                          className={cn('flex items-center justify-between px-4 py-3', parsedPayload && 'cursor-pointer hover:bg-blue-50/50 dark:hover:bg-slate-800/50')}
+                          onClick={() => parsedPayload && setExpandedId(isExpanded ? null : log.id)}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', ACTION_COLORS[log.action])}>
+                              {ACTION_LABELS[log.action]}
+                            </span>
+                            <span className="text-sm font-semibold text-blue-900 dark:text-slate-100 truncate">
+                              {ENTITY_LABELS[log.entity]}
+                            </span>
+                            {log.entityId && (
+                              <span className="text-[10px] text-blue-400 dark:text-slate-500 font-mono truncate hidden sm:block">
+                                #{log.entityId.slice(-8)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] text-blue-400 dark:text-slate-500 font-medium">
+                              {new Date(log.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {parsedPayload && (
+                              <Icons.ChevronDown className={cn('w-3.5 h-3.5 text-blue-400 transition-transform', isExpanded && 'rotate-180')} />
+                            )}
+                          </div>
+                        </div>
+
+                        <AnimatePresence>
+                          {isExpanded && parsedPayload && (
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: 'auto' }}
+                              exit={{ height: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="px-4 pb-4 pt-1 border-t border-blue-50 dark:border-slate-700/50 space-y-1.5">
+                                <p className="text-[10px] font-bold text-blue-400 dark:text-slate-500 uppercase tracking-widest mb-2">Dados enviados</p>
+                                {Object.entries(parsedPayload).map(([k, v]) => (
+                                  <div key={k} className="flex items-start gap-2 text-xs">
+                                    <span className="font-semibold text-blue-500 dark:text-slate-400 min-w-[100px] shrink-0">{k}</span>
+                                    <span className="text-blue-800 dark:text-slate-200 break-all">{String(v)}</span>
+                                  </div>
+                                ))}
+                                {log.ip && (
+                                  <div className="flex items-center gap-2 text-xs pt-1 border-t border-blue-50 dark:border-slate-700/50 mt-2">
+                                    <span className="font-semibold text-blue-400 dark:text-slate-500">IP</span>
+                                    <span className="text-blue-500 dark:text-slate-400 font-mono">{log.ip}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Calendar View ──────────────────────────────────────────────────────────
 
 function CalendarView({ reminders, transactions, categories, accounts }: { reminders: Reminder[]; transactions: Transaction[]; categories: Category[]; accounts: BankAccount[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
