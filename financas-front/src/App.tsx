@@ -8,9 +8,9 @@ import {
   User
 } from './firebase';
 import {
-  transactionsApi, categoriesApi, accountsApi, banksApi, goalsApi, remindersApi, usersApi, auditApi,
+  transactionsApi, categoriesApi, accountsApi, banksApi, goalsApi, remindersApi, usersApi, auditApi, openFinanceApi,
   TransactionResponse, CategoryResponse, AccountResponse, BankResponse, GoalResponse, ReminderResponse,
-  AiGoalsStrategy, CreateTransactionPayload, AuditLogResponse
+  AiGoalsStrategy, CreateTransactionPayload, AuditLogResponse, PluggyAccount, PluggyTransaction, PluggyItem
 } from './services/api';
 import { Transaction, Category, UserProfile, Reminder, BankAccount, Bank, Goal } from './types';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -307,7 +307,7 @@ export default function App() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance'>('dashboard');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transferenciaModal, setTransferenciaModal] = useState<{ open: boolean; prefillToId?: string; prefillAmount?: number }>({ open: false });
   const [dashboardMonth, setDashboardMonth] = useState(() => {
@@ -469,6 +469,7 @@ export default function App() {
               <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon="Landmark" label="Contas" />
               <NavButton active={activeTab === 'goals'} onClick={() => setActiveTab('goals')} icon="Target" label="Metas" />
               <NavButton active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon="List" label="Histórico" />
+              <NavButton active={activeTab === 'openfinance'} onClick={() => setActiveTab('openfinance')} icon="Zap" label="Open Finance" />
             </div>
 
             <div className="hidden md:block pt-4 border-t border-blue-100 dark:border-slate-700 mt-auto">
@@ -509,6 +510,7 @@ export default function App() {
                   {activeTab === 'accounts' && 'Minhas Contas'}
                   {activeTab === 'goals' && 'Minhas Metas'}
                   {activeTab === 'audit' && 'Histórico de Operações'}
+                  {activeTab === 'openfinance' && 'Open Finance'}
                 </h2>
                 <p className="text-blue-500 dark:text-slate-400 font-medium mt-1">
                   {activeTab === 'dashboard' && `Bem-vindo de volta, ${user.displayName?.split(' ')[0]}!`}
@@ -520,6 +522,7 @@ export default function App() {
                   {activeTab === 'accounts' && 'Gerencie suas contas bancárias e cartões.'}
                   {activeTab === 'goals' && 'Planeje e acompanhe seus sonhos financeiros.'}
                   {activeTab === 'audit' && 'Rastreabilidade de todas as operações realizadas.'}
+                  {activeTab === 'openfinance' && 'Conecte suas contas bancárias reais via Open Finance Brasil.'}
                 </p>
               </div>
               <div className="flex items-center gap-3 self-end sm:self-auto">
@@ -653,6 +656,12 @@ export default function App() {
               {activeTab === 'audit' && (
                 <motion.div key="audit" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                   <AuditLogView />
+                </motion.div>
+              )}
+
+              {activeTab === 'openfinance' && (
+                <motion.div key="openfinance" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                  <OpenFinanceView />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1542,6 +1551,253 @@ function CategoryManager({ categories, userId, onRefresh }: { categories: Catego
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Open Finance View ──────────────────────────────────────────────────────
+
+function OpenFinanceView() {
+  const [connectToken, setConnectToken] = useState<string | null>(null);
+  const [showWidget, setShowWidget] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [connectedItems, setConnectedItems] = useState<{ itemId: string; item?: PluggyItem; accounts: PluggyAccount[] }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('pluggy_items') || '[]'); } catch { return []; }
+  });
+  const [selectedAccount, setSelectedAccount] = useState<{ account: PluggyAccount; transactions: PluggyTransaction[] } | null>(null);
+  const [txLoading, setTxLoading] = useState(false);
+
+  const saveItems = (items: typeof connectedItems) => {
+    setConnectedItems(items);
+    localStorage.setItem('pluggy_items', JSON.stringify(items));
+  };
+
+  const handleConnect = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { accessToken } = await openFinanceApi.getConnectToken();
+      setConnectToken(accessToken);
+      setShowWidget(true);
+    } catch (e: any) {
+      setError(e.message ?? 'Erro ao iniciar conexão.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSuccess = async (itemId: string) => {
+    setShowWidget(false);
+    setConnectToken(null);
+    try {
+      const [item, accounts] = await Promise.all([
+        openFinanceApi.getItem(itemId),
+        openFinanceApi.getAccounts(itemId),
+      ]);
+      saveItems([...connectedItems.filter(i => i.itemId !== itemId), { itemId, item, accounts }]);
+    } catch {
+      saveItems([...connectedItems, { itemId, accounts: [] }]);
+    }
+  };
+
+  const handleViewTransactions = async (account: PluggyAccount) => {
+    setTxLoading(true);
+    setSelectedAccount(null);
+    try {
+      const transactions = await openFinanceApi.getTransactions(account.id);
+      setSelectedAccount({ account, transactions });
+    } catch (e: any) {
+      setError(e.message ?? 'Erro ao buscar transações.');
+    } finally {
+      setTxLoading(false);
+    }
+  };
+
+  const handleRemove = (itemId: string) => {
+    saveItems(connectedItems.filter(i => i.itemId !== itemId));
+    if (selectedAccount?.account.itemId === itemId) setSelectedAccount(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-3xl p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Icons.Zap className="w-5 h-5 text-blue-300" />
+            <span className="text-blue-300 text-xs font-bold uppercase tracking-widest">Powered by Pluggy</span>
+          </div>
+          <h3 className="text-xl font-bold">Open Finance Brasil</h3>
+          <p className="text-blue-300 text-sm mt-1">Conecte suas contas bancárias reais com segurança e consentimento.</p>
+        </div>
+        <button
+          onClick={handleConnect}
+          disabled={loading}
+          className="flex items-center gap-2 px-5 py-3 bg-white text-blue-900 font-bold rounded-2xl hover:bg-blue-50 transition-colors shrink-0 disabled:opacity-60"
+        >
+          {loading ? <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-900 rounded-full animate-spin" /> : <Icons.Plus className="w-4 h-4" />}
+          Conectar banco
+        </button>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl text-sm">
+          <Icons.AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Pluggy Connect Widget (iframe overlay) */}
+      {showWidget && connectToken && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        >
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl" style={{ height: '600px' }}>
+            <button
+              onClick={() => { setShowWidget(false); setConnectToken(null); }}
+              className="absolute top-3 right-3 z-10 p-2 rounded-xl bg-white/80 hover:bg-white text-slate-700 transition-colors"
+            >
+              <Icons.X className="w-4 h-4" />
+            </button>
+            <iframe
+              src={`https://connect.pluggy.ai?token=${connectToken}`}
+              className="w-full h-full border-0"
+              allow="camera"
+              title="Pluggy Connect"
+              onLoad={() => {
+                // Escuta mensagens do widget
+                const handler = (e: MessageEvent) => {
+                  if (e.data?.type === 'pluggy:success' && e.data?.itemId) {
+                    window.removeEventListener('message', handler);
+                    handleSuccess(e.data.itemId);
+                  }
+                };
+                window.addEventListener('message', handler);
+              }}
+            />
+          </div>
+        </motion.div>
+      )}
+
+      {/* Connected banks */}
+      {connectedItems.length === 0 ? (
+        <div className="py-16 text-center">
+          <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Icons.Landmark className="w-7 h-7 text-blue-300 dark:text-slate-500" />
+          </div>
+          <p className="text-sm font-semibold text-blue-900 dark:text-slate-200 mb-1">Nenhum banco conectado</p>
+          <p className="text-xs text-blue-400 dark:text-slate-500">Clique em "Conectar banco" para sincronizar suas contas reais.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {connectedItems.map(({ itemId, item, accounts }) => (
+            <div key={itemId} className="bg-white dark:bg-slate-900 rounded-3xl border border-blue-100 dark:border-slate-700 overflow-hidden">
+              {/* Bank header */}
+              <div className="flex items-center justify-between px-5 py-4 bg-blue-50/40 dark:bg-slate-800/40 border-b border-blue-100 dark:border-slate-700">
+                <div className="flex items-center gap-3">
+                  {item?.connector?.logoImageUrl ? (
+                    <img src={item.connector.logoImageUrl} alt={item.connector.name} className="w-9 h-9 rounded-xl object-contain bg-white p-1" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-slate-700 flex items-center justify-center">
+                      <Icons.Landmark className="w-5 h-5 text-blue-500" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-bold text-blue-900 dark:text-slate-100 text-sm">{item?.connector?.name ?? 'Banco conectado'}</p>
+                    <p className="text-[10px] text-blue-400 dark:text-slate-500 font-mono">{itemId.slice(-12)}</p>
+                  </div>
+                </div>
+                <button onClick={() => handleRemove(itemId)} className="p-2 text-blue-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all">
+                  <Icons.Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Accounts list */}
+              <div className="divide-y divide-blue-50 dark:divide-slate-700/50">
+                {accounts.length === 0 && (
+                  <p className="text-xs text-blue-400 dark:text-slate-500 px-5 py-4">Nenhuma conta encontrada.</p>
+                )}
+                {accounts.map(acc => (
+                  <div key={acc.id} className="flex items-center justify-between px-5 py-3 hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-slate-700 flex items-center justify-center">
+                        {acc.type === 'CREDIT' ? <Icons.CreditCard className="w-4 h-4 text-blue-500" /> : <Icons.Wallet className="w-4 h-4 text-blue-500" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900 dark:text-slate-100">{acc.name}</p>
+                        <p className="text-[10px] text-blue-400 dark:text-slate-500">{acc.subtype ?? acc.type} · {acc.number}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-blue-900 dark:text-slate-100">
+                          {acc.currencyCode} {acc.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleViewTransactions(acc)}
+                        className="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                      >
+                        Ver extrato
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Transaction panel */}
+      {txLoading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+        </div>
+      )}
+
+      {selectedAccount && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-900 rounded-3xl border border-blue-100 dark:border-slate-700 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 bg-blue-50/40 dark:bg-slate-800/40 border-b border-blue-100 dark:border-slate-700">
+            <div>
+              <p className="font-bold text-blue-900 dark:text-slate-100 text-sm">{selectedAccount.account.name} — Extrato</p>
+              <p className="text-[10px] text-blue-400 dark:text-slate-500">{selectedAccount.transactions.length} transações</p>
+            </div>
+            <button onClick={() => setSelectedAccount(null)} className="p-2 rounded-xl text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-800 transition-colors">
+              <Icons.X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="divide-y divide-blue-50 dark:divide-slate-700/50 max-h-96 overflow-y-auto">
+            {selectedAccount.transactions.length === 0 && (
+              <p className="text-xs text-blue-400 dark:text-slate-500 px-5 py-6 text-center">Nenhuma transação encontrada.</p>
+            )}
+            {selectedAccount.transactions.map(tx => (
+              <div key={tx.id} className="flex items-center justify-between px-5 py-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center shrink-0',
+                    tx.type === 'CREDIT' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-50 dark:bg-red-900/20 text-red-500'
+                  )}>
+                    {tx.type === 'CREDIT' ? <Icons.ArrowDownLeft className="w-4 h-4" /> : <Icons.ArrowUpRight className="w-4 h-4" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-blue-900 dark:text-slate-100 truncate">{tx.description}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-blue-400 dark:text-slate-500">{new Date(tx.date).toLocaleDateString('pt-BR')}</span>
+                      {tx.category && <span className="text-[10px] font-medium text-blue-500 dark:text-slate-400">{tx.category}</span>}
+                    </div>
+                  </div>
+                </div>
+                <p className={cn('font-bold text-sm shrink-0 ml-3', tx.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-600')}>
+                  {tx.type === 'CREDIT' ? '+' : '−'} {Math.abs(tx.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

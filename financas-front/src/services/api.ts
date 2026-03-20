@@ -129,6 +129,60 @@ export const aiApi = {
   getGoalsStrategy: () => request<AiGoalsStrategy>('/ai/goals-strategy', { method: 'POST' }),
 };
 
+// --- Open Finance (Pluggy) ---
+
+export const openFinanceApi = {
+  getConnectToken: () => request<{ accessToken: string }>('/openfinance/connect-token', { method: 'POST' }),
+  getConnectors: (search?: string) => {
+    const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+    return request<{ results: PluggyConnector[] }>(`/openfinance/connectors${qs}`);
+  },
+  getItem: (itemId: string) => request<PluggyItem>(`/openfinance/items/${itemId}`),
+  getAccounts: (itemId: string) => request<PluggyAccount[]>(`/openfinance/accounts?itemId=${itemId}`),
+  getTransactions: (accountId: string, from?: string, to?: string) => {
+    const qs = new URLSearchParams({ accountId, ...(from && { from }), ...(to && { to }) });
+    return request<PluggyTransaction[]>(`/openfinance/transactions?${qs}`);
+  },
+};
+
+export interface PluggyConnector {
+  id: number;
+  name: string;
+  primaryColor: string;
+  logoImageUrl?: string;
+  institutionUrl?: string;
+  country: string;
+  type: string;
+}
+
+export interface PluggyItem {
+  id: string;
+  status: string;
+  connector: { name: string; primaryColor: string; logoImageUrl: string };
+  lastUpdatedAt?: string;
+}
+
+export interface PluggyAccount {
+  id: string;
+  name: string;
+  type: string;
+  subtype: string;
+  number: string;
+  balance: number;
+  currencyCode: string;
+  itemId: string;
+}
+
+export interface PluggyTransaction {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  type: 'DEBIT' | 'CREDIT';
+  category?: string;
+  accountId: string;
+}
+
 // --- Audit Logs ---
 
 export const auditApi = {

@@ -13,6 +13,7 @@ import { GoalsModule } from './goals/goals.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
+import { OpenFinanceModule } from './openfinance/openfinance.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { AuditModule } from './audit/audit.module';
     RemindersModule,
     AiModule,
     AuditModule,
+    OpenFinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
