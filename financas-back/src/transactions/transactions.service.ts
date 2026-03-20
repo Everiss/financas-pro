@@ -5,6 +5,23 @@ import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { QueryTransactionDto } from './dto/query-transaction.dto';
 import { Prisma } from '@prisma/client';
 
+/** Calcula o delta a aplicar no balance da conta.
+ * - Contas normais (checking/savings/investment): income → +, expense → −
+ * - Cartão de crédito: expense → + (mais dívida), income → − (pagamento reduz dívida)
+ */
+function balanceDelta(
+  type: 'income' | 'expense',
+  amount: number,
+  accountType: string,
+  revert = false,
+): number {
+  const isCredit = accountType === 'credit';
+  const delta = isCredit
+    ? type === 'expense' ? amount : -amount
+    : type === 'income' ? amount : -amount;
+  return revert ? -delta : delta;
+}
+
 @Injectable()
 export class TransactionsService {
   constructor(private prisma: PrismaService) {}
@@ -51,11 +68,17 @@ export class TransactionsService {
       });
 
       if (dto.accountId) {
-        const delta = dto.type === 'income' ? Number(dto.amount) : -Number(dto.amount);
-        await tx.bankAccount.update({
+        const account = await tx.bankAccount.findUnique({
           where: { id: dto.accountId },
-          data: { balance: { increment: delta } },
+          select: { type: true },
         });
+        if (account) {
+          const delta = balanceDelta(dto.type, Number(dto.amount), account.type);
+          await tx.bankAccount.update({
+            where: { id: dto.accountId },
+            data: { balance: { increment: delta } },
+          });
+        }
       }
 
       return transaction;
@@ -67,11 +90,16 @@ export class TransactionsService {
 
     return this.prisma.$transaction(async (tx) => {
       // Reverte impacto anterior no saldo
-      if (existing.accountId) {
-        const oldDelta = existing.type === 'income' ? -Number(existing.amount) : Number(existing.amount);
+      if (existing.accountId && existing.account) {
+        const revertDelta = balanceDelta(
+          existing.type,
+          Number(existing.amount),
+          existing.account.type,
+          true,
+        );
         await tx.bankAccount.update({
           where: { id: existing.accountId },
-          data: { balance: { increment: oldDelta } },
+          data: { balance: { increment: revertDelta } },
         });
       }
 
@@ -88,12 +116,20 @@ export class TransactionsService {
       const newAccountId = dto.accountId ?? existing.accountId;
       if (newAccountId) {
         const newType = dto.type ?? existing.type;
-        const newAmount = dto.amount ?? Number(existing.amount);
-        const newDelta = newType === 'income' ? Number(newAmount) : -Number(newAmount);
-        await tx.bankAccount.update({
+        const newAmount = Number(dto.amount ?? existing.amount);
+
+        // Busca o tipo da nova conta (pode ser diferente da anterior)
+        const newAccount = await tx.bankAccount.findUnique({
           where: { id: newAccountId },
-          data: { balance: { increment: newDelta } },
+          select: { type: true },
         });
+        if (newAccount) {
+          const newDelta = balanceDelta(newType, newAmount, newAccount.type);
+          await tx.bankAccount.update({
+            where: { id: newAccountId },
+            data: { balance: { increment: newDelta } },
+          });
+        }
       }
 
       return updated;
@@ -106,11 +142,16 @@ export class TransactionsService {
     return this.prisma.$transaction(async (tx) => {
       await tx.transaction.delete({ where: { id } });
 
-      if (existing.accountId) {
-        const delta = existing.type === 'income' ? -Number(existing.amount) : Number(existing.amount);
+      if (existing.accountId && existing.account) {
+        const revertDelta = balanceDelta(
+          existing.type,
+          Number(existing.amount),
+          existing.account.type,
+          true,
+        );
         await tx.bankAccount.update({
           where: { id: existing.accountId },
-          data: { balance: { increment: delta } },
+          data: { balance: { increment: revertDelta } },
         });
       }
 

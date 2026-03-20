@@ -898,27 +898,17 @@ function StatCard({ title, amount, icon, color, trend }: { title: string; amount
 
 function PatrimonioCard({ accounts, transactions }: { accounts: BankAccount[]; transactions: Transaction[] }) {
   const stats = useMemo(() => {
-    const calcBalance = (acc: BankAccount) =>
-      transactions
-        .filter(t => t.accountId === acc.id)
-        .reduce((b, t) =>
-          acc.type === 'credit'
-            ? (t.type === 'expense' ? b + t.amount : b - t.amount)
-            : (t.type === 'income' ? b + t.amount : b - t.amount),
-          acc.balance
-        );
-
     const contasCorrentes = accounts
       .filter(a => a.type === 'checking' || a.type === 'savings')
-      .reduce((s, a) => s + calcBalance(a), 0);
+      .reduce((s, a) => s + a.balance, 0);
 
     const investimentos = accounts
       .filter(a => a.type === 'investment')
-      .reduce((s, a) => s + calcBalance(a), 0);
+      .reduce((s, a) => s + a.balance, 0);
 
     const faturas = accounts
       .filter(a => a.type === 'credit')
-      .reduce((s, a) => s + Math.max(0, calcBalance(a)), 0);
+      .reduce((s, a) => s + Math.max(0, a.balance), 0);
 
     const limiteTotal = accounts
       .filter(a => a.type === 'credit' && (a.creditLimit ?? 0) > 0)
@@ -1098,10 +1088,7 @@ function CreditCardUsage({ accounts, transactions, onPayBill }: { accounts: Bank
     return accounts
       .filter(a => a.type === 'credit' && a.creditLimit && a.creditLimit > 0)
       .map(acc => {
-        const currentBalance = transactions
-          .filter(t => t.accountId === acc.id)
-          .reduce((b, t) => t.type === 'expense' ? b + t.amount : b - t.amount, acc.balance);
-        const used = Math.max(0, currentBalance);
+        const used = Math.max(0, acc.balance);
         const available = Math.max(0, acc.creditLimit! - used);
         const percentage = Math.min((used / acc.creditLimit!) * 100, 100);
         return { id: acc.id, name: acc.name, used, available, limit: acc.creditLimit!, percentage, color: acc.color };
@@ -1813,8 +1800,7 @@ function CalendarView({ reminders, transactions, categories, accounts }: { remin
                       <div className="space-y-2">
                         {allCardEvents.map((ev, idx) => {
                           const card = accounts.find(a => a.type === 'credit' && a.name === ev.cardName);
-                          const balance = card ? transactions.filter(t => t.accountId === card.id).reduce((b, t) => t.type === 'expense' ? b + t.amount : b - t.amount, card.balance) : 0;
-                          const used = Math.max(0, balance);
+                          const used = card ? Math.max(0, card.balance) : 0;
                           const available = card?.creditLimit ? Math.max(0, card.creditLimit - used) : null;
 
                           return (
@@ -1991,30 +1977,17 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
   const investmentAccounts = useMemo(() => accounts.filter(a => a.type === 'investment'), [accounts]);
   
   const totalInvested = useMemo(() => {
-    return investmentAccounts.reduce((sum, acc) => {
-      const currentBalance = transactions
-        .filter(t => t.accountId === acc.id)
-        .reduce((accBalance, t) => {
-          return t.type === 'income' ? accBalance + t.amount : accBalance - t.amount;
-        }, acc.balance);
-      return sum + currentBalance;
-    }, 0);
-  }, [investmentAccounts, transactions]);
+    return investmentAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+  }, [investmentAccounts]);
 
   const allocation = useMemo(() => {
     const types: Record<string, number> = {};
     investmentAccounts.forEach(acc => {
-      const currentBalance = transactions
-        .filter(t => t.accountId === acc.id)
-        .reduce((accBalance, t) => {
-          return t.type === 'income' ? accBalance + t.amount : accBalance - t.amount;
-        }, acc.balance);
-      
       const type = acc.investmentType || 'other';
-      types[type] = (types[type] || 0) + currentBalance;
+      types[type] = (types[type] || 0) + acc.balance;
     });
     return Object.entries(types).map(([name, value]) => ({ name, value }));
-  }, [investmentAccounts, transactions]);
+  }, [investmentAccounts]);
 
   const typeLabels: Record<string, string> = {
     cdb: 'CDB / Renda Fixa',
@@ -2083,11 +2056,7 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {investmentAccounts.map(acc => {
-          const currentBalance = transactions
-            .filter(t => t.accountId === acc.id)
-            .reduce((accBalance, t) => {
-              return t.type === 'income' ? accBalance + t.amount : accBalance - t.amount;
-            }, acc.balance);
+          const currentBalance = acc.balance;
 
           return (
             <Card key={acc.id} className="p-5 border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden">
@@ -2328,7 +2297,7 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
           const BankIcon = Icons[bank.icon as IconName] || Icons.Landmark;
           const totalBalance = bankAccounts
             .filter(a => a.type !== 'credit')
-            .reduce((s, a) => s + transactions.filter(t => t.accountId === a.id).reduce((b, t) => t.type === 'income' ? b + t.amount : b - t.amount, a.balance), 0);
+            .reduce((s, a) => s + a.balance, 0);
 
           return (
             <Card key={bank.id} className="border-none shadow-sm bg-white dark:bg-slate-900 overflow-hidden group">
@@ -2398,12 +2367,7 @@ function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: B
               <div className="space-y-2">
                 {bankAccounts.map(acc => {
                   const Icon = Icons[acc.icon as IconName] || Icons.CreditCard;
-                  const currentBalance = transactions
-                    .filter(t => t.accountId === acc.id)
-                    .reduce((b, t) => acc.type === 'credit'
-                      ? (t.type === 'expense' ? b + t.amount : b - t.amount)
-                      : (t.type === 'income' ? b + t.amount : b - t.amount),
-                      acc.balance);
+                  const currentBalance = acc.balance;
 
                   return (
                     <div key={acc.id} className="rounded-xl overflow-hidden">
@@ -3107,16 +3071,7 @@ function TransactionModal({ onClose, categories, accounts, transactions, userId,
   });
   const [loading, setLoading] = useState(false);
 
-  const getAccountBalance = (acc: BankAccount) => {
-    return transactions
-      .filter(t => t.accountId === acc.id)
-      .reduce((accBalance, t) => {
-        if (acc.type === 'credit') {
-          return t.type === 'expense' ? accBalance + t.amount : accBalance - t.amount;
-        }
-        return t.type === 'income' ? accBalance + t.amount : accBalance - t.amount;
-      }, acc.balance);
-  };
+  const getAccountBalance = (acc: BankAccount) => acc.balance;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
