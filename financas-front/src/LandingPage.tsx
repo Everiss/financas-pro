@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { AuthModal } from './components/AuthModal';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -117,6 +118,11 @@ const STATS = [
 export function LandingPage({ onLogin }: LandingPageProps) {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authModal, setAuthModal] = useState(false);
+
+  const openAuth = () => { setMenuOpen(false); setAuthModal(true); };
+  // onLogin é mantido por compatibilidade, mas agora abrimos o modal
+  void onLogin;
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased overflow-x-hidden">
@@ -144,13 +150,13 @@ export function LandingPage({ onLogin }: LandingPageProps) {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={onLogin}
+              onClick={openAuth}
               className="hidden sm:block text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors px-3 py-2"
             >
               Entrar
             </button>
             <button
-              onClick={onLogin}
+              onClick={openAuth}
               className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-full transition-all shadow-md shadow-blue-600/20 hover:shadow-blue-600/40 active:scale-95"
             >
               Começar grátis
@@ -178,7 +184,7 @@ export function LandingPage({ onLogin }: LandingPageProps) {
                   {['Funcionalidades', 'Como funciona', 'Planos', 'FAQ'][i]}
                 </a>
               ))}
-              <button onClick={onLogin} className="text-left text-blue-600 font-semibold">Entrar com Google →</button>
+              <button onClick={openAuth} className="text-left text-blue-600 font-semibold">Entrar com Google →</button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -214,7 +220,7 @@ export function LandingPage({ onLogin }: LandingPageProps) {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
-                onClick={onLogin}
+                onClick={openAuth}
                 className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-4 rounded-2xl text-base transition-all shadow-xl shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -389,7 +395,7 @@ export function LandingPage({ onLogin }: LandingPageProps) {
 
           <div className="mt-12 text-center">
             <button
-              onClick={onLogin}
+              onClick={openAuth}
               className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-4 rounded-2xl text-base transition-all shadow-xl shadow-blue-600/20 hover:-translate-y-0.5 active:scale-95"
             >
               Criar conta grátis agora
@@ -444,7 +450,7 @@ export function LandingPage({ onLogin }: LandingPageProps) {
                     ))}
                   </div>
                   <button
-                    onClick={onLogin}
+                    onClick={openAuth}
                     className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
                       plan.highlight
                         ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
@@ -561,7 +567,7 @@ export function LandingPage({ onLogin }: LandingPageProps) {
             Junte-se a milhares de pessoas que já transformaram sua relação com o dinheiro.
           </p>
           <button
-            onClick={onLogin}
+            onClick={openAuth}
             className="bg-white text-blue-600 hover:bg-blue-50 font-bold px-10 py-4 rounded-2xl text-base transition-all shadow-2xl shadow-black/20 hover:-translate-y-0.5 active:scale-95 inline-flex items-center gap-2"
           >
             Começar grátis agora
@@ -589,7 +595,7 @@ export function LandingPage({ onLogin }: LandingPageProps) {
               <a href="#features" className="hover:text-white transition-colors">Funcionalidades</a>
               <a href="#planos" className="hover:text-white transition-colors">Planos</a>
               <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
-              <button onClick={onLogin} className="hover:text-white transition-colors">Entrar</button>
+              <button onClick={openAuth} className="hover:text-white transition-colors">Entrar</button>
             </nav>
           </div>
           <div className="border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
@@ -601,6 +607,7 @@ export function LandingPage({ onLogin }: LandingPageProps) {
           </div>
         </div>
       </footer>
+      {authModal && <AuthModal onClose={() => setAuthModal(false)} />}
     </div>
   );
 }
