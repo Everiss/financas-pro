@@ -498,7 +498,7 @@ export default function App() {
 
         {/* Main Content */}
         <main className="pb-24 md:pb-8 md:pl-64 min-h-screen">
-          <div className="max-w-5xl mx-auto p-4 md:p-8">
+          <div className="p-4 md:p-8">
             <header className="flex items-start sm:items-center justify-between mb-10 mt-4 md:mt-0 gap-4 flex-col sm:flex-row">
               <div>
                 <h2 className="text-3xl font-bold tracking-tight text-blue-900 dark:text-slate-100">
@@ -2547,8 +2547,8 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 bg-blue-900 text-white border-none shadow-xl">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <Card className="p-6 bg-blue-900 text-white border-none shadow-xl h-fit">
           <p className="text-blue-400 text-xs font-bold uppercase tracking-widest mb-2">Patrimônio Investido</p>
           <h3 className="text-3xl font-bold tracking-tight">{formatCurrency(totalInvested)}</h3>
           <div className="mt-4 flex items-center gap-2 text-emerald-400 text-sm font-medium">
@@ -2557,49 +2557,54 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
           </div>
         </Card>
 
-        <Card className="p-6 md:col-span-2 bg-white dark:bg-slate-900 border-none shadow-sm flex flex-col md:flex-row items-center gap-8">
-          <div className="w-full md:w-1/2 h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={allocation}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {allocation.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="w-full md:w-1/2 space-y-3">
-            <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100 mb-4">Alocação de Ativos</h4>
-            {allocation.length > 0 ? allocation.map((item, index) => (
-              <div key={item.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                  <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">{typeLabels[item.name]}</span>
+        <Card className="p-6 md:col-span-2 bg-white dark:bg-slate-900 border-none shadow-sm">
+          <div className="flex flex-row items-center gap-6">
+            <div className="shrink-0 w-[200px] h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={allocation}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {allocation.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex-1 space-y-3">
+              <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100 mb-4">Alocação de Ativos</h4>
+              {allocation.length > 0 ? allocation.map((item, index) => (
+                <div key={item.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">{typeLabels[item.name]}</span>
+                  </div>
+                  <span className="text-sm font-bold text-blue-900 dark:text-slate-100">
+                    {totalInvested > 0 ? ((item.value / totalInvested) * 100).toFixed(1) : 0}%
+                  </span>
                 </div>
-                <span className="text-sm font-bold text-blue-900 dark:text-slate-100">
-                  {totalInvested > 0 ? ((item.value / totalInvested) * 100).toFixed(1) : 0}%
-                </span>
-              </div>
-            )) : (
-              <p className="text-sm text-blue-500 dark:text-slate-400 italic">Nenhum investimento cadastrado.</p>
-            )}
+              )) : (
+                <p className="text-sm text-blue-500 dark:text-slate-400 italic">Nenhum investimento cadastrado.</p>
+              )}
+            </div>
           </div>
         </Card>
       </div>
 
+      {investmentAccounts.length === 0 ? (
+        <p className="text-sm text-blue-500 dark:text-slate-400 italic text-center py-4">Nenhuma conta de investimento cadastrada.</p>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {investmentAccounts.map(acc => {
           const currentBalance = acc.balance;
@@ -2626,6 +2631,7 @@ function InvestmentsView({ accounts, transactions }: { accounts: BankAccount[]; 
           );
         })}
       </div>
+      )}
     </div>
   );
 }
