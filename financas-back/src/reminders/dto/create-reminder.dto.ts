@@ -10,7 +10,7 @@ export class CreateReminderDto {
 
   @ApiProperty({ example: 1200 })
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
+  @Min(0)
   amount: number;
 
   @ApiProperty({ enum: TransactionType })
