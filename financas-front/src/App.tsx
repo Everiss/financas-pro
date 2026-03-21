@@ -74,6 +74,7 @@ function toTransaction(r: TransactionResponse): Transaction {
     description: r.description,
     accountId: r.accountId,
     paymentMethod: r.paymentMethod,
+    isTransfer: r.isTransfer ?? false,
     userId: r.userId,
   };
 }
@@ -808,10 +809,10 @@ function DashboardStats({ transactions, accounts, month }: { transactions: Trans
     const monthTxs = filterByMonth(transactions, month);
     const prevTxs = filterByMonth(transactions, prevMonth);
 
-    const income = monthTxs.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-    const expense = monthTxs.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-    const prevIncome = prevTxs.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-    const prevExpense = prevTxs.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const income = monthTxs.filter(t => t.type === 'income' && !t.isTransfer).reduce((acc, t) => acc + t.amount, 0);
+    const expense = monthTxs.filter(t => t.type === 'expense' && !t.isTransfer).reduce((acc, t) => acc + t.amount, 0);
+    const prevIncome = prevTxs.filter(t => t.type === 'income' && !t.isTransfer).reduce((acc, t) => acc + t.amount, 0);
+    const prevExpense = prevTxs.filter(t => t.type === 'expense' && !t.isTransfer).reduce((acc, t) => acc + t.amount, 0);
 
     const calcTrend = (curr: number, prev: number) =>
       prev === 0 ? null : Math.round(((curr - prev) / prev) * 100);
@@ -1102,10 +1103,10 @@ function FluxoMes({ transactions, month }: { transactions: Transaction[]; month:
     const prevMonth = subMonths(month, 1);
     const monthTxs = filterByMonth(transactions, month);
     const prevTxs = filterByMonth(transactions, prevMonth);
-    const income = monthTxs.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0);
-    const expense = monthTxs.filter(t => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
-    const prevIncome = prevTxs.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0);
-    const prevExpense = prevTxs.filter(t => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
+    const income = monthTxs.filter(t => t.type === 'income' && !t.isTransfer).reduce((a, t) => a + t.amount, 0);
+    const expense = monthTxs.filter(t => t.type === 'expense' && !t.isTransfer).reduce((a, t) => a + t.amount, 0);
+    const prevIncome = prevTxs.filter(t => t.type === 'income' && !t.isTransfer).reduce((a, t) => a + t.amount, 0);
+    const prevExpense = prevTxs.filter(t => t.type === 'expense' && !t.isTransfer).reduce((a, t) => a + t.amount, 0);
     const calcTrend = (curr: number, prev: number) => prev === 0 ? null : Math.round(((curr - prev) / prev) * 100);
     return { income, expense, resultado: income - expense, incomeTrend: calcTrend(income, prevIncome), expenseTrend: calcTrend(expense, prevExpense) };
   }, [transactions, month]);
@@ -1135,7 +1136,7 @@ function FluxoMes({ transactions, month }: { transactions: Transaction[]; month:
 function BudgetProgress({ transactions, categories, month }: { transactions: Transaction[]; categories: Category[]; month: Date }) {
   const expensesThisMonth = transactions.filter(t => {
     const d = t.date.toDate();
-    return t.type === 'expense' && d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
+    return t.type === 'expense' && !t.isTransfer && d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
   });
 
   const categoriesWithBudget = categories.filter(c => c.budget && c.budget > 0);
@@ -1267,8 +1268,8 @@ function FluxoCaixaChart({ transactions, darkMode }: { transactions: Transaction
       });
       data.push({
         name: monthLabel,
-        receitas: monthTxs.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0),
-        despesas: monthTxs.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0),
+        receitas: monthTxs.filter(t => t.type === 'income' && !t.isTransfer).reduce((acc, t) => acc + t.amount, 0),
+        despesas: monthTxs.filter(t => t.type === 'expense' && !t.isTransfer).reduce((acc, t) => acc + t.amount, 0),
       });
     }
     return data;
@@ -1299,7 +1300,7 @@ function GastosCategoriaChart({ transactions, categories, month, darkMode }: { t
   const pieData = useMemo(() => {
     const expenses = transactions.filter(t => {
       const d = t.date.toDate();
-      return t.type === 'expense' && d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
+      return t.type === 'expense' && !t.isTransfer && d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
     });
     const grouped = expenses.reduce((acc, t) => {
       acc[t.category] = (acc[t.category] || 0) + t.amount;
@@ -2244,9 +2245,9 @@ function CalendarView({ reminders, transactions, categories, accounts, onRefresh
       filteredTransactions = [];
     }
 
-    const totalExpense = [...filteredReminders.filter(r => r.type === 'expense'), ...filteredTransactions.filter(t => t.type === 'expense')]
+    const totalExpense = [...filteredReminders.filter(r => r.type === 'expense'), ...filteredTransactions.filter(t => t.type === 'expense' && !t.isTransfer)]
       .reduce((sum, item) => sum + item.amount, 0);
-    const totalIncome = [...filteredReminders.filter(r => r.type === 'income'), ...filteredTransactions.filter(t => t.type === 'income')]
+    const totalIncome = [...filteredReminders.filter(r => r.type === 'income'), ...filteredTransactions.filter(t => t.type === 'income' && !t.isTransfer)]
       .reduce((sum, item) => sum + item.amount, 0);
 
     return { reminders: filteredReminders, transactions: filteredTransactions, cardEvents: filteredCardEvents, totalExpense, totalIncome, isCritical: totalExpense > 500 };
@@ -2492,8 +2493,8 @@ function CalendarView({ reminders, transactions, categories, accounts, onRefresh
           const allCardEvents = getCardEvents(selectedDay);
           const allReminders = reminders.filter(r => isSameDay(r.dueDate.toDate(), selectedDay));
           const allTransactions = transactions.filter(t => isSameDay(t.date.toDate(), selectedDay));
-          const totalIncome = allTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-          const totalExpense = allTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+          const totalIncome = allTransactions.filter(t => t.type === 'income' && !t.isTransfer).reduce((s, t) => s + t.amount, 0);
+          const totalExpense = allTransactions.filter(t => t.type === 'expense' && !t.isTransfer).reduce((s, t) => s + t.amount, 0);
           const isEmpty = allCardEvents.length === 0 && allReminders.length === 0 && allTransactions.length === 0;
 
           return (
@@ -3591,8 +3592,8 @@ function TransferenciaModal({ accounts, prefillToId, prefillAmount, onClose, onR
       const desc = description.trim() || (isBill ? `Pagamento fatura — ${toAcc?.name}` : `Transferência: ${fromAcc?.name} → ${toAcc?.name}`);
 
       await Promise.all([
-        transactionsApi.create({ type: 'expense', amount: amt, accountId: fromId, date, description: desc, paymentMethod: 'debit' }),
-        transactionsApi.create({ type: 'income', amount: amt, accountId: toId, date, description: isBill ? `Pagamento fatura recebido` : desc }),
+        transactionsApi.create({ type: 'expense', amount: amt, accountId: fromId, date, description: desc, paymentMethod: 'debit', isTransfer: !isBill }),
+        transactionsApi.create({ type: 'income',  amount: amt, accountId: toId,   date, description: isBill ? `Pagamento fatura recebido` : desc, isTransfer: !isBill }),
       ]);
 
       await onRefresh();

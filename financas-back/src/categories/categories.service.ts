@@ -44,7 +44,7 @@ export class CategoriesService {
 
     const categories = await this.findAll(userId);
     const transactions = await this.prisma.transaction.findMany({
-      where: { userId, type: 'expense', date: { gte: start, lte: end } },
+      where: { userId, type: 'expense', isTransfer: false, date: { gte: start, lte: end } },
     });
 
     return categories.map((cat) => {

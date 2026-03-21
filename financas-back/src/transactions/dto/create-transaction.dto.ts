@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TransactionType, PaymentMethod } from '@prisma/client';
-import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
 export class CreateTransactionDto {
   @ApiProperty({ example: 150.50 })
@@ -35,4 +35,9 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional({ description: 'Indica transferência entre contas (exclui de receitas/despesas)' })
+  @IsOptional()
+  @IsBoolean()
+  isTransfer?: boolean;
 }

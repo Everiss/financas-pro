@@ -283,6 +283,7 @@ export interface TransactionResponse {
   description?: string;
   date: string;
   paymentMethod?: 'debit' | 'credit';
+  isTransfer?: boolean;
   accountId?: string;
   categoryId?: string;
   category?: CategoryResponse;
@@ -306,6 +307,7 @@ export interface CreateTransactionPayload {
   paymentMethod?: 'debit' | 'credit';
   accountId?: string;
   categoryId?: string;
+  isTransfer?: boolean;
 }
 
 export interface CategoryResponse {

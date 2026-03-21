@@ -117,6 +117,7 @@ model Transaction {
   description   String?         @db.Text
   date          DateTime
   paymentMethod PaymentMethod?  @map("payment_method")
+  isTransfer    Boolean         @default(false) @map("is_transfer")
   createdAt     DateTime        @default(now()) @map("created_at")
   updatedAt     DateTime        @updatedAt @map("updated_at")
 

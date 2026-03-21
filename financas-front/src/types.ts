@@ -9,6 +9,7 @@ export interface Transaction {
   description?: string;
   accountId?: string;
   paymentMethod?: 'debit' | 'credit';
+  isTransfer?: boolean;
   userId: string;
 }
 
