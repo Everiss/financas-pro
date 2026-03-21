@@ -3743,6 +3743,121 @@ function UpcomingReminders({ reminders, categories, accounts, userId, onRefresh 
 
 function ReminderManager({ reminders, categories, accounts, userId, onRefresh }: { reminders: Reminder[]; categories: Category[]; accounts: BankAccount[]; userId: string; onRefresh: () => Promise<void> }) {
   const [isAdding, setIsAdding] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const now = new Date();
+  const in30 = new Date(); in30.setDate(now.getDate() + 30);
+
+  const overdue  = reminders.filter(r => r.dueDate.toDate() < now);
+  const upcoming = reminders.filter(r => { const d = r.dueDate.toDate(); return d >= now && d <= in30; });
+  const future   = reminders.filter(r => r.dueDate.toDate() > in30);
+
+  const frequencyLabel = (f: string) =>
+    ({ once: 'Única', daily: 'Diária', weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' }[f] ?? f);
+
+  const handlePay = async (r: Reminder) => {
+    setPayingId(r.id);
+    try {
+      // Only create a transaction if there's an actual amount
+      if (r.amount > 0) {
+        const account = r.accountId ? accounts.find(a => a.id === r.accountId) : undefined;
+        await transactionsApi.create({
+          amount: r.amount,
+          type: r.type,
+          categoryId: r.category || undefined,
+          date: new Date().toISOString().split('T')[0],
+          description: r.title,
+          accountId: r.accountId,
+          paymentMethod: account ? (account.type === 'credit' ? 'credit' : 'debit') : undefined,
+        });
+      }
+
+      if (r.frequency === 'once') {
+        await remindersApi.delete(r.id);
+      } else {
+        const next = new Date(r.dueDate.toDate());
+        if (r.frequency === 'daily')   next.setDate(next.getDate() + 1);
+        if (r.frequency === 'weekly')  next.setDate(next.getDate() + 7);
+        if (r.frequency === 'monthly') next.setMonth(next.getMonth() + 1);
+        if (r.frequency === 'yearly')  next.setFullYear(next.getFullYear() + 1);
+        await remindersApi.update(r.id, { dueDate: next.toISOString().split('T')[0] });
+      }
+      await onRefresh();
+    } catch (err) {
+      console.error('Erro ao registrar pagamento:', err);
+    } finally {
+      setPayingId(null);
+    }
+  };
+
+  const handleDelete = async (r: Reminder) => {
+    if (!confirm('Excluir este lembrete?')) return;
+    await remindersApi.delete(r.id);
+    await onRefresh();
+  };
+
+  const ReminderRow = ({ r }: { r: Reminder }) => {
+    const isPaying = payingId === r.id;
+    const isOverdueRow = r.dueDate.toDate() < now;
+    const isInformational = r.amount === 0; // e.g. closing day reminders
+    return (
+      <tr className="hover:bg-blue-50/80 dark:hover:bg-slate-800/50 transition-colors group">
+        <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
+          <span className={cn(isOverdueRow ? 'text-red-500 font-semibold' : 'text-blue-500 dark:text-slate-400')}>
+            {formatDate(r.dueDate.toDate())}
+          </span>
+        </td>
+        <td className="px-6 py-4">
+          <p className="text-sm font-semibold text-blue-800 dark:text-slate-200">{r.title}</p>
+          {r.notes && <p className="text-xs text-blue-400 dark:text-slate-500 italic mt-0.5 truncate max-w-[200px]">{r.notes}</p>}
+        </td>
+        <td className="px-6 py-4 text-sm font-medium text-blue-500 dark:text-slate-400">
+          {frequencyLabel(r.frequency)}
+        </td>
+        <td className={cn('px-6 py-4 text-sm font-bold text-right whitespace-nowrap tracking-tight', r.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
+          {isInformational ? <span className="text-blue-400 dark:text-slate-500 text-xs font-medium">Aviso</span> : <>{r.type === 'income' ? '+' : '−'} {formatCurrency(r.amount)}</>}
+        </td>
+        <td className="px-6 py-4 text-right">
+          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            <button
+              onClick={() => handlePay(r)}
+              disabled={isPaying}
+              className={cn(
+                'px-3 py-1.5 text-xs font-bold rounded-xl transition-all disabled:opacity-50',
+                isInformational
+                  ? 'bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-slate-300 hover:bg-blue-200 dark:hover:bg-slate-600'
+                  : r.type === 'income'
+                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200'
+                    : 'bg-blue-900 text-white hover:bg-blue-800'
+              )}
+            >
+              {isPaying ? '...' : isInformational ? 'Concluir' : r.type === 'income' ? 'Receber' : 'Pagar'}
+            </button>
+            <button
+              onClick={() => handleDelete(r)}
+              className="p-1.5 text-blue-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors"
+            >
+              <Icons.Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  const Section = ({ title, color, items }: { title: string; color: string; items: Reminder[] }) => {
+    if (items.length === 0) return null;
+    return (
+      <>
+        <tr>
+          <td colSpan={5} className="px-6 pt-5 pb-2">
+            <span className={cn('text-[10px] font-bold uppercase tracking-widest', color)}>{title}</span>
+          </td>
+        </tr>
+        {items.map(r => <ReminderRow key={r.id} r={r} />)}
+      </>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -3766,41 +3881,27 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
               </tr>
             </thead>
             <tbody className="divide-y divide-blue-100/50 dark:divide-slate-700/50">
-              {reminders.map(r => (
-                <tr key={r.id} className="hover:bg-blue-50/80 dark:hover:bg-slate-800/50 transition-colors group">
-                  <td className="px-6 py-4 text-sm font-medium text-blue-500 dark:text-slate-400 whitespace-nowrap">{formatDate(r.dueDate.toDate())}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-blue-800 dark:text-slate-200">{r.title}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-blue-500 dark:text-slate-400 capitalize">
-                    {r.frequency === 'once' ? 'Única' :
-                     r.frequency === 'daily' ? 'Diária' :
-                     r.frequency === 'weekly' ? 'Semanal' :
-                     r.frequency === 'monthly' ? 'Mensal' : 'Anual'}
-                  </td>
-                  <td className={cn('px-6 py-4 text-sm font-bold text-right whitespace-nowrap tracking-tight', r.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
-                    {r.type === 'income' ? '+' : '-'} {formatCurrency(r.amount)}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button onClick={async () => {
-                      if (!confirm('Excluir este lembrete?')) return;
-                      await remindersApi.delete(r.id);
-                      await onRefresh();
-                    }} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
-                      <Icons.Trash2 className="w-4 h-4" />
-                    </button>
+              {reminders.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="py-24 text-center">
+                      <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Icons.Calendar className="w-6 h-6 text-blue-300 dark:text-slate-500" />
+                      </div>
+                      <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhum lembrete configurado.</p>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                <>
+                  <Section title="Vencidos" color="text-red-500" items={overdue} />
+                  <Section title="Próximos 30 dias" color="text-amber-500" items={upcoming} />
+                  <Section title="Futuros" color="text-blue-400 dark:text-slate-500" items={future} />
+                </>
+              )}
             </tbody>
           </table>
         </div>
-        {reminders.length === 0 && (
-          <div className="py-24 text-center">
-            <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Icons.Calendar className="w-6 h-6 text-blue-300 dark:text-slate-500" />
-            </div>
-            <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhum lembrete configurado.</p>
-          </div>
-        )}
       </Card>
 
       <AnimatePresence>
