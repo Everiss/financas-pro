@@ -3741,19 +3741,42 @@ function UpcomingReminders({ reminders, categories, accounts, userId, onRefresh 
   );
 }
 
+const PAGE_SIZE_REMINDERS = 8;
+
 function ReminderManager({ reminders, categories, accounts, userId, onRefresh }: { reminders: Reminder[]; categories: Category[]; accounts: BankAccount[]; userId: string; onRefresh: () => Promise<void> }) {
   const [isAdding, setIsAdding] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterFreq, setFilterFreq] = useState<'all' | 'once' | 'monthly' | 'weekly' | 'yearly' | 'daily'>('all');
+  const [page, setPage] = useState(1);
 
   const now = new Date();
   const in30 = new Date(); in30.setDate(now.getDate() + 30);
 
-  const overdue  = reminders.filter(r => r.dueDate.toDate() < now);
-  const upcoming = reminders.filter(r => { const d = r.dueDate.toDate(); return d >= now && d <= in30; });
-  const future   = reminders.filter(r => r.dueDate.toDate() > in30);
-
   const frequencyLabel = (f: string) =>
     ({ once: 'Única', daily: 'Diária', weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' }[f] ?? f);
+
+  // Apply search + filters
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return reminders.filter(r => {
+      if (q && !r.title.toLowerCase().includes(q) && !(r.notes?.toLowerCase().includes(q))) return false;
+      if (filterType !== 'all' && r.type !== filterType) return false;
+      if (filterFreq !== 'all' && r.frequency !== filterFreq) return false;
+      return true;
+    });
+  }, [reminders, search, filterType, filterFreq]);
+
+  // Reset page when filters change
+  const resetPage = () => setPage(1);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_REMINDERS));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE_REMINDERS, page * PAGE_SIZE_REMINDERS);
+
+  const overdue  = paginated.filter(r => r.dueDate.toDate() < now);
+  const upcoming = paginated.filter(r => { const d = r.dueDate.toDate(); return d >= now && d <= in30; });
+  const future   = paginated.filter(r => r.dueDate.toDate() > in30);
 
   const handlePay = async (r: Reminder) => {
     setPayingId(r.id);
@@ -3861,12 +3884,61 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button onClick={() => setIsAdding(true)}>
-          <Icons.Plus className="w-5 h-5" />
-          Novo Lembrete
-        </Button>
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        {/* Search */}
+        <div className="relative w-full sm:max-w-xs">
+          <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-300 dark:text-slate-500 pointer-events-none" />
+          <input
+            value={search}
+            onChange={e => { setSearch(e.target.value); resetPage(); }}
+            placeholder="Buscar lembrete..."
+            className="w-full pl-9 pr-4 py-2.5 text-sm rounded-2xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-blue-900 dark:text-slate-100 placeholder:text-blue-300 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-600 transition"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Type filter */}
+          <div className="flex bg-blue-100 dark:bg-slate-800 rounded-2xl p-1 gap-0.5">
+            {(['all', 'expense', 'income'] as const).map(t => (
+              <button key={t} onClick={() => { setFilterType(t); resetPage(); }}
+                className={cn('px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap',
+                  filterType === t ? 'bg-white dark:bg-slate-700 text-blue-900 dark:text-slate-100 shadow-sm' : 'text-blue-500 dark:text-slate-400 hover:text-blue-700')}>
+                {t === 'all' ? 'Todos' : t === 'expense' ? 'Despesas' : 'Receitas'}
+              </button>
+            ))}
+          </div>
+
+          {/* Frequency filter */}
+          <select
+            value={filterFreq}
+            onChange={e => { setFilterFreq(e.target.value as any); resetPage(); }}
+            className="text-xs font-semibold px-3 py-2 rounded-2xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-blue-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+          >
+            <option value="all">Frequência</option>
+            <option value="once">Única</option>
+            <option value="daily">Diária</option>
+            <option value="weekly">Semanal</option>
+            <option value="monthly">Mensal</option>
+            <option value="yearly">Anual</option>
+          </select>
+
+          <Button onClick={() => setIsAdding(true)}>
+            <Icons.Plus className="w-4 h-4" />
+            Novo Lembrete
+          </Button>
+        </div>
       </div>
+
+      {/* Results count */}
+      {(search || filterType !== 'all' || filterFreq !== 'all') && (
+        <p className="text-xs text-blue-400 dark:text-slate-500 font-medium">
+          {filtered.length} lembrete{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+          {search && <> para "<span className="text-blue-600 dark:text-slate-300">{search}</span>"</>}
+          {' '}
+          <button onClick={() => { setSearch(''); setFilterType('all'); setFilterFreq('all'); resetPage(); }} className="text-blue-500 hover:text-blue-700 underline ml-1">Limpar filtros</button>
+        </p>
+      )}
 
       <Card className="p-0 overflow-hidden border-none shadow-sm bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="overflow-x-auto">
@@ -3881,14 +3953,16 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
               </tr>
             </thead>
             <tbody className="divide-y divide-blue-100/50 dark:divide-slate-700/50">
-              {reminders.length === 0 ? (
+              {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5}>
-                    <div className="py-24 text-center">
-                      <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Icons.Calendar className="w-6 h-6 text-blue-300 dark:text-slate-500" />
+                    <div className="py-20 text-center">
+                      <div className="w-14 h-14 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Icons.Search className="w-5 h-5 text-blue-300 dark:text-slate-500" />
                       </div>
-                      <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhum lembrete configurado.</p>
+                      <p className="text-blue-500 dark:text-slate-400 font-medium text-sm">
+                        {reminders.length === 0 ? 'Nenhum lembrete configurado.' : 'Nenhum lembrete encontrado.'}
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -3902,6 +3976,56 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-blue-100 dark:border-slate-700/50 bg-blue-50/30 dark:bg-slate-800/30">
+            <p className="text-xs text-blue-400 dark:text-slate-500 font-medium">
+              Página {page} de {totalPages} · {filtered.length} lembretes
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-1.5 rounded-lg text-blue-400 dark:text-slate-500 hover:bg-blue-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <Icons.ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                  if (idx > 0 && (arr[idx - 1] as number) !== p - 1) acc.push('...');
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`ellipsis-${idx}`} className="px-1 text-blue-300 dark:text-slate-600 text-xs">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p as number)}
+                      className={cn(
+                        'w-8 h-8 rounded-lg text-xs font-bold transition-all',
+                        page === p
+                          ? 'bg-blue-900 dark:bg-blue-600 text-white'
+                          : 'text-blue-500 dark:text-slate-400 hover:bg-blue-100 dark:hover:bg-slate-700'
+                      )}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-1.5 rounded-lg text-blue-400 dark:text-slate-500 hover:bg-blue-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <Icons.ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <AnimatePresence>
