@@ -10,7 +10,7 @@ export class SubscriptionService {
 
   constructor(private prisma: PrismaService, private config: ConfigService) {
     this.stripe = new Stripe(this.config.getOrThrow('STRIPE_SECRET_KEY'), {
-      apiVersion: '2025-02-24.acacia',
+      apiVersion: '2026-02-25.clover',
     });
   }
 
@@ -124,8 +124,9 @@ export class SubscriptionService {
   }
 
   private async handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-    const userId = session.subscription_data?.metadata?.userId
-      ?? (await this.getUserIdByCustomer(session.customer as string));
+    // subscription_data is only a request param, not present on the response object.
+    // Resolve userId via the Stripe customer instead.
+    const userId = await this.getUserIdByCustomer(session.customer as string);
     if (!userId) return;
 
     const subscription = await this.stripe.subscriptions.retrieve(session.subscription as string);
@@ -140,6 +141,12 @@ export class SubscriptionService {
     const priceId = sub.items.data[0]?.price.id;
     const plan = this.resolvePlan(priceId);
 
+    // current_period_start/end were removed from the top-level Subscription type
+    // in newer Stripe SDK versions — access via the first item's period.
+    const item = sub.items.data[0] as any;
+    const periodStart = new Date((item?.current_period_start ?? item?.period?.start ?? 0) * 1000);
+    const periodEnd   = new Date((item?.current_period_end   ?? item?.period?.end   ?? 0) * 1000);
+
     await this.prisma.$transaction([
       this.prisma.subscription.upsert({
         where: { stripeSubscriptionId: sub.id },
@@ -148,15 +155,15 @@ export class SubscriptionService {
           stripeSubscriptionId: sub.id,
           stripePriceId: priceId,
           status: sub.status as any,
-          currentPeriodStart: new Date(sub.current_period_start * 1000),
-          currentPeriodEnd: new Date(sub.current_period_end * 1000),
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
           cancelAtPeriodEnd: sub.cancel_at_period_end,
         },
         update: {
           status: sub.status as any,
           stripePriceId: priceId,
-          currentPeriodStart: new Date(sub.current_period_start * 1000),
-          currentPeriodEnd: new Date(sub.current_period_end * 1000),
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
           cancelAtPeriodEnd: sub.cancel_at_period_end,
         },
       }),
