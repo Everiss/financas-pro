@@ -50,6 +50,7 @@ export const Icons = {
   PiggyBank: Lucide.PiggyBank,
   Banknote: Lucide.Banknote,
   Clock: Lucide.Clock,
+  Bell: Lucide.Bell,
 };
 
 export type IconName = keyof typeof Icons;

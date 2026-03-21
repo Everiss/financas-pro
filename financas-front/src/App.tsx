@@ -719,7 +719,7 @@ export default function App() {
 
               {activeTab === 'calendar' && (
                 <motion.div key="calendar" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                  <CalendarView reminders={reminders} transactions={transactions} categories={categories} accounts={accounts} />
+                  <CalendarView reminders={reminders} transactions={transactions} categories={categories} accounts={accounts} onRefresh={fetchAllData} />
                 </motion.div>
               )}
 
@@ -2189,10 +2189,12 @@ function AuditLogView() {
 
 // ─── Calendar View ──────────────────────────────────────────────────────────
 
-function CalendarView({ reminders, transactions, categories, accounts }: { reminders: Reminder[]; transactions: Transaction[]; categories: Category[]; accounts: BankAccount[] }) {
+function CalendarView({ reminders, transactions, categories, accounts, onRefresh }: { reminders: Reminder[]; transactions: Transaction[]; categories: Category[]; accounts: BankAccount[]; onRefresh: () => Promise<void> }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filter, setFilter] = useState<'all' | 'expense' | 'income' | 'reminder' | 'card'>('all');
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [genResult, setGenResult] = useState<{ created: number; skipped: number } | null>(null);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -2250,6 +2252,71 @@ function CalendarView({ reminders, transactions, categories, accounts }: { remin
     return { reminders: filteredReminders, transactions: filteredTransactions, cardEvents: filteredCardEvents, totalExpense, totalIncome, isCritical: totalExpense > 500 };
   };
 
+  const handleGenerateReminders = async () => {
+    setGenerating(true);
+    setGenResult(null);
+    let created = 0;
+    let skipped = 0;
+
+    // Helper: next date with a given day-of-month (from today forward)
+    const nextDateWithDay = (day: number): string => {
+      const now = new Date();
+      const candidate = new Date(now.getFullYear(), now.getMonth(), day);
+      if (candidate < now) candidate.setMonth(candidate.getMonth() + 1);
+      return candidate.toISOString().split('T')[0];
+    };
+
+    for (const card of creditCards) {
+      // Vencimento (due day) → expense reminder to pay the bill
+      if (card.dueDay) {
+        const title = `Vencimento — ${card.name}`;
+        const alreadyExists = reminders.some(
+          r => r.title === title && (r.frequency === 'monthly' || r.frequency === 'once')
+        );
+        if (alreadyExists) {
+          skipped++;
+        } else {
+          await remindersApi.create({
+            title,
+            amount: Math.max(0, card.balance ?? 0),
+            type: 'expense',
+            dueDate: nextDateWithDay(card.dueDay),
+            frequency: 'monthly',
+            accountId: card.id,
+            notes: `Pagamento da fatura do cartão ${card.name}. Vencimento todo dia ${card.dueDay}.`,
+          });
+          created++;
+        }
+      }
+
+      // Fechamento (closing day) → expense reminder to stop spending
+      if (card.closingDay) {
+        const title = `Fechamento — ${card.name}`;
+        const alreadyExists = reminders.some(
+          r => r.title === title && (r.frequency === 'monthly' || r.frequency === 'once')
+        );
+        if (alreadyExists) {
+          skipped++;
+        } else {
+          await remindersApi.create({
+            title,
+            amount: 0,
+            type: 'expense',
+            dueDate: nextDateWithDay(card.closingDay),
+            frequency: 'monthly',
+            accountId: card.id,
+            notes: `Fechamento da fatura do cartão ${card.name}. Fecha todo dia ${card.closingDay}.`,
+          });
+          created++;
+        }
+      }
+    }
+
+    await onRefresh();
+    setGenResult({ created, skipped });
+    setGenerating(false);
+  };
+
   // Build a list of upcoming card events this month for the summary panel
   const upcomingCardEvents = useMemo(() => {
     const today = new Date();
@@ -2276,20 +2343,60 @@ function CalendarView({ reminders, transactions, categories, accounts }: { remin
           </button>
         </div>
 
-        <div className="flex p-1 bg-blue-100 dark:bg-slate-800 rounded-2xl w-full sm:w-auto overflow-x-auto">
-          {(['all', 'expense', 'income', 'reminder', 'card'] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={cn('px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all', filter === f ? 'bg-white dark:bg-slate-700 text-blue-900 dark:text-slate-100 shadow-sm' : 'text-blue-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-slate-200')}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+          {creditCards.length > 0 && (
+            <button
+              onClick={handleGenerateReminders}
+              disabled={generating}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-2xl border border-blue-200 dark:border-slate-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 disabled:opacity-50 transition-all"
             >
-              {f === 'all' && 'Tudo'}
-              {f === 'expense' && 'Despesas'}
-              {f === 'income' && 'Receitas'}
-              {f === 'reminder' && 'Lembretes'}
-              {f === 'card' && '💳 Cartões'}
+              <Icons.Bell className="w-3.5 h-3.5" />
+              {generating ? 'Gerando...' : 'Gerar lembretes dos cartões'}
             </button>
-          ))}
+          )}
+          <div className="flex p-1 bg-blue-100 dark:bg-slate-800 rounded-2xl overflow-x-auto">
+            {(['all', 'expense', 'income', 'reminder', 'card'] as const).map((f) => (
+              <button key={f} onClick={() => setFilter(f)}
+                className={cn('px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all', filter === f ? 'bg-white dark:bg-slate-700 text-blue-900 dark:text-slate-100 shadow-sm' : 'text-blue-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-slate-200')}
+              >
+                {f === 'all' && 'Tudo'}
+                {f === 'expense' && 'Despesas'}
+                {f === 'income' && 'Receitas'}
+                {f === 'reminder' && 'Lembretes'}
+                {f === 'card' && '💳 Cartões'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Generation result feedback */}
+      <AnimatePresence>
+        {genResult && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className={cn(
+              'flex items-center gap-3 p-4 rounded-2xl border text-sm font-medium',
+              genResult.created > 0
+                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                : 'bg-blue-50 dark:bg-slate-800 border-blue-200 dark:border-slate-700 text-blue-600 dark:text-blue-400'
+            )}
+          >
+            <Icons.Bell className="w-4 h-4 shrink-0" />
+            <span>
+              {genResult.created > 0
+                ? `${genResult.created} lembrete${genResult.created > 1 ? 's' : ''} criado${genResult.created > 1 ? 's' : ''} com sucesso!`
+                : 'Nenhum lembrete novo — todos os cartões já possuem lembretes configurados.'}
+              {genResult.skipped > 0 && genResult.created > 0 && ` (${genResult.skipped} já existiam)`}
+            </span>
+            <button onClick={() => setGenResult(null)} className="ml-auto text-current opacity-50 hover:opacity-100 transition-opacity">
+              <Icons.X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Legend */}
       {creditCards.length > 0 && (
