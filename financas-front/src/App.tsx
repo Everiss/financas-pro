@@ -3778,14 +3778,23 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
   const upcoming = paginated.filter(r => { const d = r.dueDate.toDate(); return d >= now && d <= in30; });
   const future   = paginated.filter(r => r.dueDate.toDate() > in30);
 
+  // For credit card reminders, always use the current card balance as the effective amount
+  const effectiveAmount = (r: Reminder): number => {
+    if (!r.accountId) return r.amount;
+    const account = accounts.find(a => a.id === r.accountId);
+    if (account?.type === 'credit') return Math.max(0, account.balance);
+    return r.amount;
+  };
+
   const handlePay = async (r: Reminder) => {
     setPayingId(r.id);
+    const amount = effectiveAmount(r);
     try {
       // Only create a transaction if there's an actual amount
-      if (r.amount > 0) {
+      if (amount > 0) {
         const account = r.accountId ? accounts.find(a => a.id === r.accountId) : undefined;
         await transactionsApi.create({
-          amount: r.amount,
+          amount,
           type: r.type,
           categoryId: r.category || undefined,
           date: new Date().toISOString().split('T')[0],
@@ -3822,7 +3831,8 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
   const ReminderRow = ({ r }: { r: Reminder }) => {
     const isPaying = payingId === r.id;
     const isOverdueRow = r.dueDate.toDate() < now;
-    const isInformational = r.amount === 0; // e.g. closing day reminders
+    const amount = effectiveAmount(r);
+    const isInformational = amount === 0; // closing day reminders or zero-balance cards
     return (
       <tr className="hover:bg-blue-50/80 dark:hover:bg-slate-800/50 transition-colors group">
         <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
@@ -3838,7 +3848,7 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
           {frequencyLabel(r.frequency)}
         </td>
         <td className={cn('px-6 py-4 text-sm font-bold text-right whitespace-nowrap tracking-tight', r.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
-          {isInformational ? <span className="text-blue-400 dark:text-slate-500 text-xs font-medium">Aviso</span> : <>{r.type === 'income' ? '+' : '−'} {formatCurrency(r.amount)}</>}
+          {isInformational ? <span className="text-blue-400 dark:text-slate-500 text-xs font-medium">Aviso</span> : <>{r.type === 'income' ? '+' : '−'} {formatCurrency(amount)}</>}
         </td>
         <td className="px-6 py-4 text-right">
           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -4040,18 +4050,21 @@ function ReminderManager({ reminders, categories, accounts, userId, onRefresh }:
 const ReminderItem: React.FC<{ reminder: Reminder; category?: Category; accounts: BankAccount[]; userId: string; onRefresh: () => Promise<void> }> = ({ reminder, category, accounts, onRefresh }) => {
   const Icon = category ? Icons[category.icon as IconName] : Icons.Calendar;
   const isOverdue = reminder.dueDate.toDate() < new Date();
-  
+
+  // For credit card reminders, use current card balance instead of stored amount
+  const account = reminder.accountId ? accounts.find(a => a.id === reminder.accountId) : undefined;
+  const effectiveAmount = account?.type === 'credit' ? Math.max(0, account.balance) : reminder.amount;
+
   const handlePay = async () => {
     try {
-      const account = reminder.accountId ? accounts.find(a => a.id === reminder.accountId) : undefined;
       await transactionsApi.create({
-        amount: reminder.amount,
+        amount: effectiveAmount,
         type: reminder.type,
         categoryId: reminder.category,
         date: new Date().toISOString().split('T')[0],
         description: reminder.title,
         accountId: reminder.accountId,
-        paymentMethod: account ? (account.type === 'credit' ? 'credit' : 'debit') : undefined,
+        paymentMethod: account?.type === 'credit' ? 'credit' : 'debit',
       });
 
       if (reminder.frequency === 'once') {
@@ -4091,7 +4104,7 @@ const ReminderItem: React.FC<{ reminder: Reminder; category?: Category; accounts
       </div>
       <div className="flex flex-col items-end gap-2">
         <div className={cn('font-bold text-right text-lg tracking-tight', reminder.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
-          {formatCurrency(reminder.amount)}
+          {formatCurrency(effectiveAmount)}
         </div>
         <Button 
           variant="secondary" 
