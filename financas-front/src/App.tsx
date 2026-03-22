@@ -167,6 +167,7 @@ export default function App() {
     d.setHours(0, 0, 0, 0);
     return d;
   });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     const stored = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -356,60 +357,94 @@ export default function App() {
 
         {/* Sidebar / Nav */}
         <nav
-          className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-0 md:w-64 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t md:border-t-0 md:border-r border-blue-100/50 dark:border-slate-700/50 z-50"
+          className={`fixed bottom-0 left-0 right-0 md:top-0 md:bottom-0 md:right-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t md:border-t-0 md:border-r border-blue-100/50 dark:border-slate-700/50 z-50 transition-all duration-300 ${sidebarCollapsed ? 'md:w-16' : 'md:w-64'}`}
           style={{ backgroundColor: darkMode ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.9)' }}
         >
-          <div className="h-full flex flex-col p-4">
-            <div className="hidden md:flex items-center gap-3 mb-8 px-2 mt-4">
-              <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-                <Icons.Wallet className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-xl tracking-tight text-blue-900 dark:text-slate-100">Finanças Pro</span>
+          <div className="h-full flex flex-col p-2 md:p-4">
+            {/* Logo / toggle */}
+            <div className={`hidden md:flex items-center mb-8 mt-4 ${sidebarCollapsed ? 'justify-center' : 'gap-3 px-2'}`}>
+              {!sidebarCollapsed && (
+                <>
+                  <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20 shrink-0">
+                    <Icons.Wallet className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="font-bold text-xl tracking-tight text-blue-900 dark:text-slate-100 flex-1 truncate">Finanças Pro</span>
+                </>
+              )}
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="p-2 rounded-xl text-blue-400 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors shrink-0"
+                title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+              >
+                {sidebarCollapsed ? <Icons.ChevronRight className="w-4 h-4" /> : <Icons.ChevronLeft className="w-4 h-4" />}
+              </button>
             </div>
 
-            <div className="flex md:flex-col items-center md:items-stretch justify-around md:justify-start gap-2 flex-1">
-              <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon="LayoutDashboard" label="Dashboard" />
-              <NavButton active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} icon="List" label="Transações" />
-              <NavButton active={activeTab === 'investments'} onClick={() => setActiveTab('investments')} icon="TrendingUp" label="Investimentos" />
-              <NavButton active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon="Tag" label="Categorias" />
-              <NavButton active={activeTab === 'calendar'} onClick={() => setActiveTab('calendar')} icon="Calendar" label="Calendário" />
-              <NavButton active={activeTab === 'reminders'} onClick={() => setActiveTab('reminders')} icon="List" label="Lembretes" />
-              <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon="Landmark" label="Contas" />
-              <NavButton active={activeTab === 'goals'} onClick={() => setActiveTab('goals')} icon="Target" label="Metas" />
-              <NavButton active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon="List" label="Histórico" />
+            <div className="flex md:flex-col items-center md:items-stretch justify-around md:justify-start gap-1 flex-1">
+              <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon="LayoutDashboard" label="Dashboard" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} icon="List" label="Transações" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'investments'} onClick={() => setActiveTab('investments')} icon="TrendingUp" label="Investimentos" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon="Tag" label="Categorias" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'calendar'} onClick={() => setActiveTab('calendar')} icon="Calendar" label="Calendário" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'reminders'} onClick={() => setActiveTab('reminders')} icon="List" label="Lembretes" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon="Landmark" label="Contas" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'goals'} onClick={() => setActiveTab('goals')} icon="Target" label="Metas" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} icon="List" label="Histórico" collapsed={sidebarCollapsed} />
               <PlanGate feature="openFinance" showLocked={true}>
-                <NavButton active={activeTab === 'openfinance'} onClick={() => setActiveTab('openfinance')} icon="Zap" label="Open Finance" />
+                <NavButton active={activeTab === 'openfinance'} onClick={() => setActiveTab('openfinance')} icon="Zap" label="Open Finance" collapsed={sidebarCollapsed} />
               </PlanGate>
-              <NavButton active={activeTab === 'planos'} onClick={() => setActiveTab('planos')} icon="Sparkles" label="Planos" />
+              <NavButton active={activeTab === 'planos'} onClick={() => setActiveTab('planos')} icon="Sparkles" label="Planos" collapsed={sidebarCollapsed} />
             </div>
 
             <div className="hidden md:block pt-4 border-t border-blue-100 dark:border-slate-700 mt-auto">
-              <div className="flex items-center gap-3 px-2 mb-4">
-                <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border border-blue-200 dark:border-slate-600" alt="" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate dark:text-slate-100">{user.displayName}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <PlanBadge />
-                  </div>
+              {sidebarCollapsed ? (
+                <div className="flex flex-col items-center gap-2">
+                  <img src={user.photoURL || ''} className="w-8 h-8 rounded-full border border-blue-200 dark:border-slate-600" alt="" />
+                  <button
+                    onClick={() => setDarkMode(!darkMode)}
+                    className="p-2 rounded-xl text-blue-400 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+                    title={darkMode ? 'Modo claro' : 'Modo escuro'}
+                  >
+                    {darkMode ? <Icons.Sun className="w-4 h-4" /> : <Icons.Moon className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    title="Sair"
+                  >
+                    <Icons.LogOut className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setDarkMode(!darkMode)}
-                  className="p-2 rounded-xl text-blue-400 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
-                  title={darkMode ? 'Modo claro' : 'Modo escuro'}
-                >
-                  {darkMode ? <Icons.Sun className="w-4 h-4" /> : <Icons.Moon className="w-4 h-4" />}
-                </button>
-              </div>
-              <Button variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={handleLogout}>
-                <Icons.LogOut className="w-4 h-4" />
-                Sair
-              </Button>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 px-2 mb-4">
+                    <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border border-blue-200 dark:border-slate-600" alt="" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate dark:text-slate-100">{user.displayName}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <PlanBadge />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setDarkMode(!darkMode)}
+                      className="p-2 rounded-xl text-blue-400 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+                      title={darkMode ? 'Modo claro' : 'Modo escuro'}
+                    >
+                      {darkMode ? <Icons.Sun className="w-4 h-4" /> : <Icons.Moon className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <Button variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={handleLogout}>
+                    <Icons.LogOut className="w-4 h-4" />
+                    Sair
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </nav>
 
         {/* Main Content */}
-        <main className="pb-24 md:pb-8 md:pl-64 min-h-screen">
+        <main className={`pb-24 md:pb-8 min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'md:pl-16' : 'md:pl-64'}`}>
           <div className="p-4 md:p-8">
             <header className="flex items-start sm:items-center justify-between mb-10 mt-4 md:mt-0 gap-4 flex-col sm:flex-row">
               <div>
