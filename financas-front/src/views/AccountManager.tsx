@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { cn, formatCurrency } from '../lib/utils';
 import { Icons, IconName } from '../components/Icons';
 import { Button, Card, Input, RadioGroup, Select } from '../components/ui';
-import { banksApi, accountsApi } from '../services/api';
-import { Transaction, BankAccount, Bank } from '../types';
+import { banksApi, accountsApi, transactionsApi, remindersApi } from '../services/api';
+import { Transaction, BankAccount, Bank, Reminder } from '../types';
 import { PlanGate } from '../components/PlanGate';
 import { BANK_COLORS, BANK_ICONS, EMPTY_ACC } from '../lib/constants';
 
-export function AccountManager({ banks, accounts, transactions, onRefresh }: { banks: Bank[]; accounts: BankAccount[]; transactions: Transaction[]; userId: string; onRefresh: () => Promise<void> }) {
+export function AccountManager({ banks, accounts, transactions, reminders, onRefresh }: { banks: Bank[]; accounts: BankAccount[]; transactions: Transaction[]; reminders: Reminder[]; userId: string; onRefresh: () => Promise<void> }) {
   const [isAddingBank, setIsAddingBank] = useState(false);
   const [newBank, setNewBank] = useState({ name: '', color: '#3b82f6', icon: 'Landmark' as IconName });
   const [addingAccTo, setAddingAccTo] = useState<string | null>(null);
@@ -136,9 +136,23 @@ export function AccountManager({ banks, accounts, transactions, onRefresh }: { b
     }
   };
 
-  const handleDeleteAccount = async (id: string) => {
+  const handleDeleteAccount = async (acc: BankAccount) => {
+    const linkedTx = transactions.filter(t => t.accountId === acc.id);
+    const linkedRem = reminders.filter(r => r.accountId === acc.id);
+
+    const lines = [`Conta: ${acc.name}`];
+    if (linkedTx.length > 0) lines.push(`${linkedTx.length} transação(ões) vinculada(s)`);
+    if (linkedRem.length > 0) lines.push(`${linkedRem.length} lembrete(s) vinculado(s)`);
+    lines.push('\nEssa ação não pode ser desfeita.');
+
+    if (!confirm(lines.join('\n'))) return;
+
     try {
-      await accountsApi.delete(id);
+      await Promise.all([
+        ...linkedTx.map(t => transactionsApi.delete(t.id)),
+        ...linkedRem.map(r => remindersApi.delete(r.id)),
+      ]);
+      await accountsApi.delete(acc.id);
       await onRefresh();
     } catch (err) { console.error(err); }
   };
@@ -329,7 +343,7 @@ export function AccountManager({ banks, accounts, transactions, onRefresh }: { b
                                 <button onClick={() => editingAccId === acc.id ? setEditingAccId(null) : startEditAcc(acc)} className="p-1 text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-lg transition-all" title="Editar">
                                   <Icons.Edit2 className="w-3 h-3" />
                                 </button>
-                                <button onClick={() => handleDeleteAccount(acc.id)} className="p-1 text-blue-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all" title="Excluir">
+                                <button onClick={() => handleDeleteAccount(acc)} className="p-1 text-blue-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all" title="Excluir">
                                   <Icons.Trash2 className="w-3 h-3" />
                                 </button>
                               </div>

@@ -628,7 +628,7 @@ export default function App() {
 
               {activeTab === 'accounts' && (
                 <motion.div key="accounts" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                  <AccountManager banks={banks} accounts={accounts} transactions={transactions} userId={user.uid} onRefresh={fetchAllData} />
+                  <AccountManager banks={banks} accounts={accounts} transactions={transactions} reminders={reminders} userId={user.uid} onRefresh={fetchAllData} />
                 </motion.div>
               )}
 
