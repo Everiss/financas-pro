@@ -192,6 +192,36 @@ export default function App() {
     }
   }, [darkMode]);
 
+  const [clearing, setClearing] = useState(false);
+
+  const handleClearAllData = async () => {
+    const msg = [
+      `Isso vai apagar PERMANENTEMENTE:`,
+      `• ${transactions.length} transação(ões)`,
+      `• ${reminders.length} lembrete(s)`,
+      `• ${accounts.length} conta(s)/cartão(ões)`,
+      `• ${banks.length} banco(s)`,
+      ``,
+      `Confirmar? Digite "LIMPAR" para continuar.`,
+    ].join('\n');
+    if (prompt(msg) !== 'LIMPAR') return;
+
+    setClearing(true);
+    try {
+      await Promise.all([
+        ...transactions.map(t => transactionsApi.delete(t.id)),
+        ...reminders.map(r => remindersApi.delete(r.id)),
+      ]);
+      await Promise.all(accounts.map(a => accountsApi.delete(a.id)));
+      await Promise.all(banks.map(b => banksApi.delete(b.id)));
+      await fetchAllData();
+    } catch (err) {
+      console.error('Erro ao limpar dados:', err);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const fetchAllData = useCallback(async () => {
     if (!auth.currentUser) return;
     try {
@@ -416,6 +446,14 @@ export default function App() {
                   >
                     <Icons.LogOut className="w-4 h-4" />
                   </button>
+                  <button
+                    onClick={handleClearAllData}
+                    disabled={clearing}
+                    className="p-2 rounded-xl text-red-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    title="Limpar todos os dados"
+                  >
+                    <Icons.Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               ) : (
                 <>
@@ -438,6 +476,10 @@ export default function App() {
                   <Button variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={handleLogout}>
                     <Icons.LogOut className="w-4 h-4" />
                     Sair
+                  </Button>
+                  <Button variant="ghost" disabled={clearing} className="w-full justify-start text-red-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs" onClick={handleClearAllData}>
+                    <Icons.Trash2 className="w-3.5 h-3.5" />
+                    {clearing ? 'Limpando...' : 'Limpar todos os dados'}
                   </Button>
                 </>
               )}
