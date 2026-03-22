@@ -4,6 +4,7 @@ import { Icons, IconName } from '../components/Icons';
 import { Button, Card, Input } from '../components/ui';
 import { categoriesApi } from '../services/api';
 import { Category } from '../types';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 export function CategoryManager({ categories, userId, onRefresh }: { categories: Category[]; userId: string; onRefresh: () => Promise<void> }) {
   const [isAdding, setIsAdding] = useState(false);
@@ -38,10 +39,18 @@ export function CategoryManager({ categories, userId, onRefresh }: { categories:
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Excluir esta categoria? Transações existentes não serão afetadas.')) return;
+  const { confirm } = useConfirm();
+
+  const handleDelete = async (cat: Category) => {
+    const ok = await confirm({
+      title: `Excluir categoria "${cat.name}"?`,
+      description: 'Transações existentes não serão afetadas.',
+      variant: 'danger',
+      confirmLabel: 'Excluir',
+    });
+    if (!ok) return;
     try {
-      await categoriesApi.delete(id);
+      await categoriesApi.delete(cat.id);
       await onRefresh();
     } catch (err) {
       console.error('Erro ao excluir categoria:', err);
@@ -71,7 +80,7 @@ export function CategoryManager({ categories, userId, onRefresh }: { categories:
                   <button onClick={() => { setEditingId(cat.id); setEditBudget(cat.budget?.toString() || ''); }} className="p-2 text-blue-400 hover:text-blue-900 dark:hover:text-slate-100 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-full transition-colors">
                     <Icons.Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(cat.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors">
+                  <button onClick={() => handleDelete(cat)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors">
                     <Icons.Trash2 className="w-4 h-4" />
                   </button>
                 </div>

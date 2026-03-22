@@ -24,6 +24,9 @@ import { ptBR } from 'date-fns/locale';
 // UI primitives
 import { Button } from './components/ui';
 
+// Confirm dialog
+import { ConfirmProvider, useConfirm } from './contexts/ConfirmContext';
+
 // Layout
 import { NavButton } from './components/layout/NavButton';
 
@@ -150,6 +153,14 @@ function toReminder(r: ReminderResponse): Reminder {
 // --- Main App ---
 
 export default function App() {
+  return (
+    <ConfirmProvider>
+      <AppInner />
+    </ConfirmProvider>
+  );
+}
+
+function AppInner() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -192,19 +203,24 @@ export default function App() {
     }
   }, [darkMode]);
 
+  const { confirm } = useConfirm();
   const [clearing, setClearing] = useState(false);
 
   const handleClearAllData = async () => {
-    const msg = [
-      `Isso vai apagar PERMANENTEMENTE:`,
-      `• ${transactions.length} transação(ões)`,
-      `• ${reminders.length} lembrete(s)`,
-      `• ${accounts.length} conta(s)/cartão(ões)`,
-      `• ${banks.length} banco(s)`,
-      ``,
-      `Confirmar? Digite "LIMPAR" para continuar.`,
-    ].join('\n');
-    if (prompt(msg) !== 'LIMPAR') return;
+    const ok = await confirm({
+      title: 'Limpar todos os dados',
+      description: 'Esta ação é permanente e não pode ser desfeita.',
+      variant: 'danger',
+      requireText: 'LIMPAR',
+      items: [
+        `${transactions.length} transação(ões)`,
+        `${reminders.length} lembrete(s)`,
+        `${accounts.length} conta(s) / cartão(ões)`,
+        `${banks.length} banco(s)`,
+      ],
+      confirmLabel: 'Apagar tudo',
+    });
+    if (!ok) return;
 
     setClearing(true);
     try {

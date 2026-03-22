@@ -4,6 +4,7 @@ import { Icons, IconName } from '../components/Icons';
 import { Button, Card, Input, RadioGroup, Select } from '../components/ui';
 import { banksApi, accountsApi, transactionsApi, remindersApi } from '../services/api';
 import { Transaction, BankAccount, Bank, Reminder } from '../types';
+import { useConfirm } from '../contexts/ConfirmContext';
 import { PlanGate } from '../components/PlanGate';
 import { BANK_COLORS, BANK_ICONS, EMPTY_ACC } from '../lib/constants';
 
@@ -21,6 +22,8 @@ export function AccountManager({ banks, accounts, transactions, reminders, onRef
   const [editingAccId, setEditingAccId] = useState<string | null>(null);
   const [editAccForm, setEditAccForm] = useState({ ...EMPTY_ACC });
   const [editAccError, setEditAccError] = useState('');
+
+  const { confirm } = useConfirm();
 
   const typeLabels: Record<string, string> = {
     checking: 'Conta Corrente',
@@ -140,12 +143,18 @@ export function AccountManager({ banks, accounts, transactions, reminders, onRef
     const linkedTx = transactions.filter(t => t.accountId === acc.id);
     const linkedRem = reminders.filter(r => r.accountId === acc.id);
 
-    const lines = [`Conta: ${acc.name}`];
-    if (linkedTx.length > 0) lines.push(`${linkedTx.length} transação(ões) vinculada(s)`);
-    if (linkedRem.length > 0) lines.push(`${linkedRem.length} lembrete(s) vinculado(s)`);
-    lines.push('\nEssa ação não pode ser desfeita.');
+    const items: string[] = [];
+    if (linkedTx.length > 0) items.push(`${linkedTx.length} transação(ões) vinculada(s)`);
+    if (linkedRem.length > 0) items.push(`${linkedRem.length} lembrete(s) vinculado(s)`);
 
-    if (!confirm(lines.join('\n'))) return;
+    const ok = await confirm({
+      title: `Excluir "${acc.name}"?`,
+      description: items.length > 0 ? 'Os seguintes dados também serão removidos:' : 'Esta ação não pode ser desfeita.',
+      items,
+      variant: 'danger',
+      confirmLabel: 'Excluir tudo',
+    });
+    if (!ok) return;
 
     try {
       await Promise.all([

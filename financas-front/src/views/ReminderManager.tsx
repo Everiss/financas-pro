@@ -6,6 +6,7 @@ import { Button, Card } from '../components/ui';
 import { transactionsApi, remindersApi } from '../services/api';
 import { Reminder, Category, BankAccount } from '../types';
 import { ReminderModal } from '../components/modals/ReminderModal';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 export { ReminderItem } from '../components/dashboard/UpcomingReminders';
 
@@ -14,6 +15,7 @@ const PAGE_SIZE_REMINDERS = 8;
 export function ReminderManager({ reminders, categories, accounts, userId, onRefresh }: { reminders: Reminder[]; categories: Category[]; accounts: BankAccount[]; userId: string; onRefresh: () => Promise<void> }) {
   const [isAdding, setIsAdding] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const { confirm } = useConfirm();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterFreq, setFilterFreq] = useState<'all' | 'once' | 'monthly' | 'weekly' | 'yearly' | 'daily'>('all');
@@ -91,7 +93,13 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
   };
 
   const handleDelete = async (r: Reminder) => {
-    if (!confirm('Excluir este lembrete?')) return;
+    const ok = await confirm({
+      title: 'Excluir lembrete?',
+      description: r.title,
+      variant: 'danger',
+      confirmLabel: 'Excluir',
+    });
+    if (!ok) return;
     await remindersApi.delete(r.id);
     await onRefresh();
   };

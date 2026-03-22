@@ -8,6 +8,7 @@ import { Goal, Transaction, BankAccount, Category } from '../types';
 import { PlanGate } from '../components/PlanGate';
 import { GoalModal } from '../components/modals/GoalModal';
 import { getGoalInsights } from '../services/aiService';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 export function GoalItem({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () => void; onDelete: () => void; key?: string }) {
   const percentage = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
@@ -77,20 +78,26 @@ export function GoalsView({ goals, userId, transactions, accounts, categories, o
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [aiAdvice, setAiAdvice] = useState<AiGoalsStrategy | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  const { confirm } = useConfirm();
 
   const handleEdit = (goal: Goal) => {
     setEditingGoal(goal);
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (goalId: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta meta?')) {
-      try {
-        await goalsApi.delete(goalId);
-        await onRefresh();
-      } catch (error) {
-        console.error('Erro ao excluir meta:', error);
-      }
+  const handleDelete = async (goal: Goal) => {
+    const ok = await confirm({
+      title: `Excluir meta "${goal.name}"?`,
+      description: 'Esta ação não pode ser desfeita.',
+      variant: 'danger',
+      confirmLabel: 'Excluir',
+    });
+    if (!ok) return;
+    try {
+      await goalsApi.delete(goal.id);
+      await onRefresh();
+    } catch (error) {
+      console.error('Erro ao excluir meta:', error);
     }
   };
 
@@ -229,7 +236,7 @@ export function GoalsView({ goals, userId, transactions, accounts, categories, o
           </div>
         ) : (
           goals.map(goal => (
-            <GoalItem key={goal.id} goal={goal} onEdit={() => handleEdit(goal)} onDelete={() => { handleDelete(goal.id!); }} />
+            <GoalItem key={goal.id} goal={goal} onEdit={() => handleEdit(goal)} onDelete={() => handleDelete(goal)} />
           ))
         )}
       </div>

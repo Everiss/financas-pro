@@ -8,11 +8,13 @@ import { Transaction, Category, BankAccount } from '../types';
 import { PlanGate } from '../components/PlanGate';
 import { TransactionModal } from '../components/modals/TransactionModal';
 import { AnimatePresence } from 'motion/react';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 export function TransactionManager({ transactions, categories, accounts, onRefresh, userId }: { transactions: Transaction[]; categories: Category[]; accounts: BankAccount[]; onRefresh: () => Promise<void>; userId: string }) {
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [search, setSearch] = useState('');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const { confirm } = useConfirm();
 
   const filtered = useMemo(() => {
     return transactions.filter(t => {
@@ -23,10 +25,16 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
     });
   }, [transactions, categories, filter, search]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta transação?')) return;
+  const handleDelete = async (t: Transaction) => {
+    const ok = await confirm({
+      title: 'Excluir transação',
+      description: t.description || undefined,
+      variant: 'danger',
+      confirmLabel: 'Excluir',
+    });
+    if (!ok) return;
     try {
-      await transactionsApi.delete(id);
+      await transactionsApi.delete(t.id);
       await onRefresh();
     } catch (err) {
       console.error('Erro ao excluir transação:', err);
@@ -116,7 +124,7 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
                         <button onClick={() => setEditingTransaction(t)} className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
                           <Icons.Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(t.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                        <button onClick={() => handleDelete(t)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
                           <Icons.Trash2 className="w-4 h-4" />
                         </button>
                       </div>
