@@ -77,6 +77,7 @@ model BankAccount {
   closingDay     Int?            @map("closing_day")
   dueDay         Int?            @map("due_day")
   investmentType InvestmentType? @map("investment_type")
+  subtype        String?         @db.VarChar(50)
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
@@ -255,6 +256,9 @@ enum InvestmentType {
   fund
   fii
   other
+  tesouro
+  previdencia
+  crypto
 }
 
 enum TransactionType {

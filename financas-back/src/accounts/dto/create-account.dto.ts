@@ -52,6 +52,11 @@ export class CreateAccountDto {
   @IsEnum(InvestmentType)
   investmentType?: InvestmentType;
 
+  @ApiPropertyOptional({ example: 'digital' })
+  @IsOptional()
+  @IsString()
+  subtype?: string;
+
   @ApiPropertyOptional({ example: 'uuid-do-banco' })
   @IsOptional()
   @IsString()

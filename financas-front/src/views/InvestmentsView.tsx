@@ -21,13 +21,16 @@ interface Props {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  cdb:      'CDB / Renda Fixa',
-  stock:    'Ações',
-  fund:     'Fundos',
-  fii:      'FIIs',
-  other:    'Outros',
-  checking: 'Caixa / Disponível',
-  savings:  'Caixa / Disponível',
+  cdb:         'CDB / Renda Fixa',
+  stock:       'Ações',
+  fund:        'Fundos',
+  fii:         'FIIs',
+  tesouro:     'Tesouro Direto',
+  previdencia: 'Previdência',
+  crypto:      'Criptomoedas',
+  other:       'Outros',
+  checking:    'Caixa / Disponível',
+  savings:     'Caixa / Disponível',
 };
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];

@@ -6,7 +6,7 @@ import { banksApi, accountsApi, transactionsApi, remindersApi } from '../service
 import { Transaction, BankAccount, Bank, Reminder } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { PlanGate } from '../components/PlanGate';
-import { BANK_COLORS, BANK_ICONS, EMPTY_ACC } from '../lib/constants';
+import { BANK_COLORS, BANK_ICONS, EMPTY_ACC, SUBTYPE_OPTIONS, SUBTYPE_LABELS } from '../lib/constants';
 
 export function AccountManager({ banks, accounts, transactions, reminders, onRefresh }: { banks: Bank[]; accounts: BankAccount[]; transactions: Transaction[]; reminders: Reminder[]; userId: string; onRefresh: () => Promise<void> }) {
   const [isAddingBank, setIsAddingBank] = useState(false);
@@ -85,6 +85,7 @@ export function AccountManager({ banks, accounts, transactions, reminders, onRef
         if (newAcc.dueDay) data.dueDay = parseInt(newAcc.dueDay);
       }
       if (newAcc.type === 'investment') data.investmentType = newAcc.investmentType;
+      if (newAcc.subtype) data.subtype = newAcc.subtype;
       await accountsApi.create(data);
       setAddingAccTo(null);
       setNewAcc({ ...EMPTY_ACC });
@@ -106,6 +107,7 @@ export function AccountManager({ banks, accounts, transactions, reminders, onRef
       closingDay: acc.closingDay != null ? String(acc.closingDay) : '',
       dueDay: acc.dueDay != null ? String(acc.dueDay) : '',
       investmentType: acc.investmentType ?? 'cdb',
+      subtype: acc.subtype ?? '',
     });
     setEditAccError('');
     setAddingAccTo(null);
@@ -131,6 +133,7 @@ export function AccountManager({ banks, accounts, transactions, reminders, onRef
         data.dueDay = editAccForm.dueDay ? parseInt(editAccForm.dueDay) : null;
       }
       if (editAccForm.type === 'investment') data.investmentType = editAccForm.investmentType;
+      data.subtype = editAccForm.subtype || null;
       await accountsApi.update(id, data);
       setEditingAccId(null);
       await onRefresh();
@@ -329,7 +332,9 @@ export function AccountManager({ banks, accounts, transactions, reminders, onRef
                               </div>
                               <div className="min-w-0">
                                 <p className="text-xs font-semibold text-blue-900 dark:text-slate-100 truncate">{acc.name}</p>
-                                <p className="text-[10px] text-blue-400 dark:text-slate-500">{typeLabels[acc.type]}</p>
+                                <p className="text-[10px] text-blue-400 dark:text-slate-500">
+                                  {acc.subtype ? SUBTYPE_LABELS[acc.subtype] ?? typeLabels[acc.type] : typeLabels[acc.type]}
+                                </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0 ml-2">
@@ -364,10 +369,13 @@ export function AccountManager({ banks, accounts, transactions, reminders, onRef
                             <div className="px-4 pb-4 pt-2 bg-blue-50/30 dark:bg-slate-800/30 border-t border-blue-100 dark:border-slate-700 space-y-3">
                               <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100">Editar {typeLabels[acc.type]}</h4>
                               <Input label="Nome" value={editAccForm.name} onChange={e => { setEditAccForm({ ...editAccForm, name: e.target.value }); setEditAccError(''); }} error={!editAccForm.name.trim() && editAccError ? editAccError : undefined} />
-                              <RadioGroup label="Tipo" value={editAccForm.type} onChange={val => setEditAccForm({ ...editAccForm, type: val as BankAccount['type'] })} options={[{ value: 'checking', label: 'Corrente' }, { value: 'savings', label: 'Poupança' }, { value: 'investment', label: 'Invest.' }, { value: 'credit', label: 'Cartão' }]} />
+                              <RadioGroup label="Tipo" value={editAccForm.type} onChange={val => setEditAccForm({ ...editAccForm, type: val as BankAccount['type'], subtype: '' })} options={[{ value: 'checking', label: 'Corrente' }, { value: 'savings', label: 'Poupança' }, { value: 'investment', label: 'Invest.' }, { value: 'credit', label: 'Cartão' }]} />
+                              {SUBTYPE_OPTIONS[editAccForm.type] && (
+                                <Select label="Subtipo" value={editAccForm.subtype} onChange={e => setEditAccForm({ ...editAccForm, subtype: e.target.value })} options={[{ value: '', label: '— Nenhum —' }, ...SUBTYPE_OPTIONS[editAccForm.type]]} />
+                              )}
                               <Input label={editAccForm.type === 'credit' ? 'Fatura atual' : 'Saldo'} inputMode="decimal" placeholder="0,00" value={editAccForm.balance} onChange={e => setEditAccForm({ ...editAccForm, balance: e.target.value.replace(',', '.') })} />
                               {editAccForm.type === 'investment' && (
-                                <Select label="Tipo de Investimento" value={editAccForm.investmentType} onChange={e => setEditAccForm({ ...editAccForm, investmentType: e.target.value as BankAccount['investmentType'] })} options={[{ value: 'cdb', label: 'CDB / Renda Fixa' }, { value: 'stock', label: 'Ações' }, { value: 'fund', label: 'Fundos' }, { value: 'fii', label: 'FIIs' }, { value: 'other', label: 'Outros' }]} />
+                                <Select label="Tipo de Investimento" value={editAccForm.investmentType} onChange={e => setEditAccForm({ ...editAccForm, investmentType: e.target.value as BankAccount['investmentType'] })} options={[{ value: 'cdb', label: 'CDB / Renda Fixa' }, { value: 'stock', label: 'Ações' }, { value: 'fund', label: 'Fundos' }, { value: 'fii', label: 'FIIs' }, { value: 'tesouro', label: 'Tesouro Direto' }, { value: 'previdencia', label: 'Previdência' }, { value: 'crypto', label: 'Criptomoedas' }, { value: 'other', label: 'Outros' }]} />
                               )}
                               {editAccForm.type === 'credit' && (
                                 <div className="space-y-3 p-3 rounded-xl bg-white/60 dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
@@ -396,10 +404,13 @@ export function AccountManager({ banks, accounts, transactions, reminders, onRef
                   <div className="mt-4 pt-4 border-t border-blue-100/50 dark:border-slate-700/50 space-y-4">
                     <h4 className="text-sm font-bold text-blue-900 dark:text-slate-100">Nova conta / cartão</h4>
                     <Input label="Nome" placeholder="Ex: Conta Corrente, Roxinho..." value={newAcc.name} onChange={e => { setNewAcc({ ...newAcc, name: e.target.value }); setAccError(''); }} error={!newAcc.name.trim() && accError ? accError : undefined} />
-                    <RadioGroup label="Tipo" value={newAcc.type} onChange={val => setNewAcc({ ...newAcc, type: val as BankAccount['type'] })} options={[{ value: 'checking', label: 'Corrente' }, { value: 'savings', label: 'Poupança' }, { value: 'investment', label: 'Invest.' }, { value: 'credit', label: 'Cartão' }]} />
+                    <RadioGroup label="Tipo" value={newAcc.type} onChange={val => setNewAcc({ ...newAcc, type: val as BankAccount['type'], subtype: '' })} options={[{ value: 'checking', label: 'Corrente' }, { value: 'savings', label: 'Poupança' }, { value: 'investment', label: 'Invest.' }, { value: 'credit', label: 'Cartão' }]} />
+                    {SUBTYPE_OPTIONS[newAcc.type] && (
+                      <Select label="Subtipo" value={newAcc.subtype} onChange={e => setNewAcc({ ...newAcc, subtype: e.target.value })} options={[{ value: '', label: '— Selecione (opcional) —' }, ...SUBTYPE_OPTIONS[newAcc.type]]} />
+                    )}
                     <Input label={newAcc.type === 'credit' ? 'Fatura atual' : 'Saldo inicial'} inputMode="decimal" placeholder="0,00" value={newAcc.balance} onChange={e => setNewAcc({ ...newAcc, balance: e.target.value.replace(',', '.') })} />
                     {newAcc.type === 'investment' && (
-                      <Select label="Tipo de Investimento" value={newAcc.investmentType} onChange={e => setNewAcc({ ...newAcc, investmentType: e.target.value as BankAccount['investmentType'] })} options={[{ value: 'cdb', label: 'CDB / Renda Fixa' }, { value: 'stock', label: 'Ações' }, { value: 'fund', label: 'Fundos' }, { value: 'fii', label: 'FIIs' }, { value: 'other', label: 'Outros' }]} />
+                      <Select label="Tipo de Investimento" value={newAcc.investmentType} onChange={e => setNewAcc({ ...newAcc, investmentType: e.target.value as BankAccount['investmentType'] })} options={[{ value: 'cdb', label: 'CDB / Renda Fixa' }, { value: 'stock', label: 'Ações' }, { value: 'fund', label: 'Fundos' }, { value: 'fii', label: 'FIIs' }, { value: 'tesouro', label: 'Tesouro Direto' }, { value: 'previdencia', label: 'Previdência' }, { value: 'crypto', label: 'Criptomoedas' }, { value: 'other', label: 'Outros' }]} />
                     )}
                     {newAcc.type === 'credit' && (
                       <div className="space-y-3 p-3 rounded-xl bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700">
