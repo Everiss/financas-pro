@@ -54,6 +54,7 @@ import { InvestmentsView } from './views/InvestmentsView';
 import { OpenFinanceView } from './views/OpenFinanceView';
 import { PlanosView } from './views/PlanosView';
 import { AuditLogView } from './views/AuditLogView';
+import { FaturaView } from './views/FaturaView';
 
 // --- API → Frontend type adapters ---
 
@@ -158,7 +159,7 @@ export default function App() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'investments' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'fatura' | 'investments' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos'>('dashboard');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transferenciaModal, setTransferenciaModal] = useState<{ open: boolean; prefillToId?: string; prefillAmount?: number }>({ open: false });
   const [dashboardMonth, setDashboardMonth] = useState(() => {
@@ -383,6 +384,7 @@ export default function App() {
             <div className="flex md:flex-col items-center md:items-stretch justify-around md:justify-start gap-1 flex-1">
               <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon="LayoutDashboard" label="Dashboard" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} icon="List" label="Transações" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'fatura'} onClick={() => setActiveTab('fatura')} icon="CreditCard" label="Faturas" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'investments'} onClick={() => setActiveTab('investments')} icon="TrendingUp" label="Investimentos" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon="Tag" label="Categorias" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'calendar'} onClick={() => setActiveTab('calendar')} icon="Calendar" label="Calendário" collapsed={sidebarCollapsed} />
@@ -451,6 +453,7 @@ export default function App() {
                 <h2 className="text-3xl font-bold tracking-tight text-blue-900 dark:text-slate-100">
                   {activeTab === 'dashboard' && 'Dashboard'}
                   {activeTab === 'transactions' && 'Minhas Transações'}
+                  {activeTab === 'fatura' && 'Faturas do Cartão'}
                   {activeTab === 'investments' && 'Meus Investimentos'}
                   {activeTab === 'categories' && 'Categorias'}
                   {activeTab === 'calendar' && 'Calendário Financeiro'}
@@ -464,6 +467,7 @@ export default function App() {
                 <p className="text-blue-500 dark:text-slate-400 font-medium mt-1">
                   {activeTab === 'dashboard' && `Bem-vindo de volta, ${user.displayName?.split(' ')[0]}!`}
                   {activeTab === 'transactions' && 'Histórico completo de movimentações.'}
+                  {activeTab === 'fatura' && 'Visualize gastos e período de fechamento por cartão.'}
                   {activeTab === 'investments' && 'Acompanhe o crescimento do seu patrimônio.'}
                   {activeTab === 'categories' && 'Organize seus gastos por categorias.'}
                   {activeTab === 'calendar' && 'Visualize seus vencimentos e períodos críticos.'}
@@ -590,6 +594,17 @@ export default function App() {
               {activeTab === 'transactions' && (
                 <motion.div key="transactions" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                   <TransactionManager transactions={transactions} categories={categories} accounts={accounts} onRefresh={fetchAllData} userId={user?.uid || ''} />
+                </motion.div>
+              )}
+
+              {activeTab === 'fatura' && (
+                <motion.div key="fatura" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                  <FaturaView
+                    accounts={accounts}
+                    transactions={transactions}
+                    categories={categories}
+                    onPayBill={(toId, amount) => setTransferenciaModal({ open: true, prefillToId: toId, prefillAmount: amount })}
+                  />
                 </motion.div>
               )}
 
