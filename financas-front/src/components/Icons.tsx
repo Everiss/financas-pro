@@ -51,6 +51,7 @@ export const Icons = {
   Banknote: Lucide.Banknote,
   Clock: Lucide.Clock,
   Bell: Lucide.Bell,
+  Globe: Lucide.Globe,
 };
 
 export type IconName = keyof typeof Icons;
