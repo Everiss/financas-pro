@@ -45,6 +45,39 @@ export interface UserProfile {
   currency: string;
 }
 
+export interface UserSettings {
+  id: string;
+  userId: string;
+  // Comunicação
+  emailNotifications: boolean;
+  weeklyReport: boolean;
+  monthlyReport: boolean;
+  pushNotifications: boolean;
+  // Lembretes
+  reminderAdvanceDays: number;
+  reminderFrequency: 'daily' | 'weekly';
+  // Alertas
+  budgetAlertThreshold: number;
+  lowBalanceAlert: number;
+  largeTransactionAlert: number;
+  creditUsageAlert: number;
+  // Saúde financeira
+  emergencyFundMonths: number;
+  savingsRateTarget: number;
+  debtIncomeLimit: number;
+  // Investimentos
+  riskProfile: 'conservative' | 'moderate' | 'aggressive';
+  rebalanceAlert: boolean;
+  rebalanceThreshold: number;
+  fixedIncomeTarget: number;
+  variableTarget: number;
+  internationalTarget: number;
+  // Notícias
+  showMarketNews: boolean;
+  showEconomicNews: boolean;
+  showPersonalTips: boolean;
+}
+
 export interface Bank {
   id: string;
   name: string;

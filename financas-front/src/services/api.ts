@@ -40,6 +40,14 @@ export const usersApi = {
     request<UserResponse>('/users/me', { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
+// --- Settings ---
+
+export const settingsApi = {
+  get: () => request<any>('/settings'),
+  update: (data: Partial<any>) =>
+    request<any>('/settings', { method: 'PUT', body: JSON.stringify(data) }),
+};
+
 // --- Transactions ---
 
 export const transactionsApi = {

@@ -61,6 +61,7 @@ import { PlanosView } from './views/PlanosView';
 import { AuditLogView } from './views/AuditLogView';
 import { FaturaView } from './views/FaturaView';
 import { AnalyticsView } from './views/AnalyticsView';
+import { SettingsView } from './views/SettingsView';
 
 // --- API → Frontend type adapters ---
 
@@ -178,7 +179,7 @@ function AppInner() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'fatura' | 'investments' | 'analytics' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'fatura' | 'investments' | 'analytics' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos' | 'settings'>('dashboard');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transferenciaModal, setTransferenciaModal] = useState<{ open: boolean; prefillToId?: string; prefillAmount?: number }>({ open: false });
   const [dashboardMonth, setDashboardMonth] = useState(() => {
@@ -468,6 +469,7 @@ function AppInner() {
                 <NavButton active={activeTab === 'openfinance'} onClick={() => setActiveTab('openfinance')} icon="Zap" label="Open Finance" collapsed={sidebarCollapsed} />
               </PlanGate>
               <NavButton active={activeTab === 'planos'} onClick={() => setActiveTab('planos')} icon="Sparkles" label="Planos" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon="Settings" label="Configurações" collapsed={sidebarCollapsed} />
             </div>
           </div>
         </nav>
@@ -491,6 +493,7 @@ function AppInner() {
                   {activeTab === 'openfinance' && 'Open Finance'}
                   {activeTab === 'analytics' && 'Análises com IA'}
                   {activeTab === 'planos' && 'Planos & Assinatura'}
+                  {activeTab === 'settings' && 'Configurações'}
                 </h2>
                 <p className="text-blue-500 dark:text-slate-400 font-medium mt-1">
                   {activeTab === 'dashboard' && `Bem-vindo de volta, ${user.displayName?.split(' ')[0]}!`}
@@ -506,6 +509,7 @@ function AppInner() {
                   {activeTab === 'openfinance' && 'Conecte suas contas bancárias reais via Open Finance Brasil.'}
                   {activeTab === 'analytics' && 'Inteligência artificial aplicada às suas finanças.'}
                   {activeTab === 'planos' && 'Escolha o plano ideal para você.'}
+                  {activeTab === 'settings' && 'Personalize alertas, lembretes, investimentos e muito mais.'}
                 </p>
               </div>
               <div className="flex items-center gap-3 self-end sm:self-auto">
@@ -702,6 +706,16 @@ function AppInner() {
               {activeTab === 'planos' && (
                 <motion.div key="planos" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                   <PlanosView />
+                </motion.div>
+              )}
+
+              {activeTab === 'settings' && (
+                <motion.div key="settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                  <SettingsView
+                    user={user}
+                    profile={profile}
+                    onProfileUpdate={async (data) => { await usersApi.updateMe(data); }}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>

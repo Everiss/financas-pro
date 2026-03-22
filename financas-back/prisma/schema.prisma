@@ -30,8 +30,54 @@ model User {
   aiInsightCache  AiInsightCache?
   auditLogs       AuditLog[]
   subscription    Subscription?
+  settings        UserSettings?
 
   @@map("users")
+}
+
+model UserSettings {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Comunicação
+  emailNotifications Boolean @default(true)  @map("email_notifications")
+  weeklyReport       Boolean @default(true)  @map("weekly_report")
+  monthlyReport      Boolean @default(true)  @map("monthly_report")
+  pushNotifications  Boolean @default(true)  @map("push_notifications")
+
+  // Lembretes
+  reminderAdvanceDays Int    @default(3)       @map("reminder_advance_days")
+  reminderFrequency   String @default("daily") @map("reminder_frequency") @db.VarChar(20)
+
+  // Alertas
+  budgetAlertThreshold  Int   @default(80)  @map("budget_alert_threshold")
+  lowBalanceAlert       Float @default(100) @map("low_balance_alert")
+  largeTransactionAlert Float @default(500) @map("large_transaction_alert")
+  creditUsageAlert      Int   @default(70)  @map("credit_usage_alert")
+
+  // Saúde financeira
+  emergencyFundMonths Float @default(6)  @map("emergency_fund_months")
+  savingsRateTarget   Int   @default(20) @map("savings_rate_target")
+  debtIncomeLimit     Int   @default(30) @map("debt_income_limit")
+
+  // Investimentos
+  riskProfile        String  @default("moderate") @map("risk_profile") @db.VarChar(20)
+  rebalanceAlert     Boolean @default(true)        @map("rebalance_alert")
+  rebalanceThreshold Int     @default(5)           @map("rebalance_threshold")
+  fixedIncomeTarget  Int     @default(40)          @map("fixed_income_target")
+  variableTarget     Int     @default(40)          @map("variable_target")
+  internationalTarget Int    @default(20)          @map("international_target")
+
+  // Notícias
+  showMarketNews   Boolean @default(true) @map("show_market_news")
+  showEconomicNews Boolean @default(true) @map("show_economic_news")
+  showPersonalTips Boolean @default(true) @map("show_personal_tips")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt       @map("updated_at")
+
+  @@map("user_settings")
 }
 
 model Subscription {

@@ -8,7 +8,7 @@ import { User } from '../../firebase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'dashboard' | 'transactions' | 'fatura' | 'investments' | 'analytics' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos';
+type Tab = 'dashboard' | 'transactions' | 'fatura' | 'investments' | 'analytics' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos' | 'settings';
 
 interface TopBarProps {
   user: User;
@@ -222,6 +222,7 @@ function UserMenu({
           {/* Nav items */}
           <div className="py-1">
             <MenuItem icon="LayoutDashboard" label="Dashboard" onClick={() => go('dashboard')} />
+            <MenuItem icon="Settings" label="Configurações" onClick={() => go('settings')} />
             <MenuItem icon="Sparkles" label="Planos & Assinatura" onClick={() => go('planos')} />
           </div>
 
