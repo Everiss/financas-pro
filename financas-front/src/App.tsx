@@ -125,6 +125,7 @@ function toAccount(r: AccountResponse): BankAccount {
     userId: r.userId,
     bankId: r.bankId,
     bank: r.bank ? { id: r.bank.id, name: r.bank.name, color: r.bank.color, icon: r.bank.icon, userId: r.bank.userId } : undefined,
+    currency: r.currency ?? 'BRL',
   };
 }
 

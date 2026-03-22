@@ -57,6 +57,11 @@ export class CreateAccountDto {
   @IsString()
   subtype?: string;
 
+  @ApiPropertyOptional({ example: 'USD', description: 'Código ISO 4217 da moeda (padrão: BRL)' })
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
   @ApiPropertyOptional({ example: 'uuid-do-banco' })
   @IsOptional()
   @IsString()

@@ -425,6 +425,7 @@ export interface AccountResponse {
   dueDay?: number;
   investmentType?: 'cdb' | 'stock' | 'fund' | 'fii' | 'other' | 'tesouro' | 'previdencia' | 'crypto';
   subtype?: string;
+  currency?: string;
   bankId?: string;
   bank?: BankResponse;
   userId: string;
@@ -441,6 +442,7 @@ export interface CreateAccountPayload {
   dueDay?: number;
   investmentType?: 'cdb' | 'stock' | 'fund' | 'fii' | 'other' | 'tesouro' | 'previdencia' | 'crypto';
   subtype?: string;
+  currency?: string;
   bankId?: string;
 }
 

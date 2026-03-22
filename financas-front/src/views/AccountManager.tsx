@@ -7,7 +7,7 @@ import { banksApi, accountsApi, transactionsApi, remindersApi } from '../service
 import { Transaction, BankAccount, Bank, Reminder } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { PlanGate } from '../components/PlanGate';
-import { BANK_COLORS, BANK_ICONS, EMPTY_ACC, SUBTYPE_OPTIONS, SUBTYPE_LABELS, DEBT_TYPES } from '../lib/constants';
+import { BANK_COLORS, BANK_ICONS, EMPTY_ACC, SUBTYPE_OPTIONS, SUBTYPE_LABELS, DEBT_TYPES, CURRENCIES } from '../lib/constants';
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -100,10 +100,24 @@ function AccountForm({
           options={[{ value: '', label: '— Selecione (opcional) —' }, ...SUBTYPE_OPTIONS[value.type]]}
         />
       )}
+      {/* Currency selector */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider">Moeda</label>
+        <select
+          value={value.currency}
+          onChange={e => onChange({ ...value, currency: e.target.value })}
+          className="w-full rounded-xl border border-blue-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-blue-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+        >
+          {CURRENCIES.map(c => (
+            <option key={c.code} value={c.code}>{c.flag} {c.code} — {c.label}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Balance field — label changes by type */}
       {!isDebt && (
         <Input
-          label={value.type === 'credit' ? 'Fatura atual' : 'Saldo'}
+          label={value.type === 'credit' ? 'Fatura atual' : `Saldo ${value.currency !== 'BRL' ? `(${value.currency})` : ''}`}
           inputMode="decimal"
           placeholder="0,00"
           value={value.balance}
@@ -239,9 +253,17 @@ function BankCard({
   const [newAccError,  setNewAccError]  = useState('');
 
   const BankIcon = Icons[bank.icon as IconName] || Icons.Landmark;
-  const totalBalance = accounts.filter(a => a.type !== 'credit' && !DEBT_TYPES.includes(a.type)).reduce((s, a) => s + a.balance, 0);
-  const creditBalance = accounts.filter(a => a.type === 'credit').reduce((s, a) => s + Math.abs(a.balance), 0);
-  const debtBalance = accounts.filter(a => DEBT_TYPES.includes(a.type)).reduce((s, a) => s + a.balance, 0);
+  const brlAccounts = accounts.filter(a => (a.currency ?? 'BRL') === 'BRL');
+  const totalBalance  = brlAccounts.filter(a => a.type !== 'credit' && !DEBT_TYPES.includes(a.type)).reduce((s, a) => s + a.balance, 0);
+  const creditBalance = brlAccounts.filter(a => a.type === 'credit').reduce((s, a) => s + Math.abs(a.balance), 0);
+  const debtBalance   = brlAccounts.filter(a => DEBT_TYPES.includes(a.type)).reduce((s, a) => s + a.balance, 0);
+  // Foreign currency summary: group by currency
+  const fxAccounts = accounts.filter(a => (a.currency ?? 'BRL') !== 'BRL');
+  const fxSummary: Record<string, number> = {};
+  for (const a of fxAccounts) {
+    const c = a.currency!;
+    fxSummary[c] = (fxSummary[c] ?? 0) + (DEBT_TYPES.includes(a.type) ? -a.balance : a.type === 'credit' ? -Math.abs(a.balance) : a.balance);
+  }
 
   // ── Bank actions ────────────────────────────────────────────────────────────
 
@@ -288,6 +310,7 @@ function BankCard({
       dueDay:      acc.dueDay      != null ? String(acc.dueDay)      : '',
       investmentType: acc.investmentType ?? 'cdb',
       subtype: acc.subtype ?? '',
+      currency: acc.currency ?? 'BRL',
     });
     setEditAccError('');
     setAddingAcc(false);
@@ -307,6 +330,7 @@ function BankCard({
           : isDebt ? DEBT_ICONS[editAccForm.type]
           : editAccForm.icon,
       subtype: editAccForm.subtype || null,
+      currency: editAccForm.currency || 'BRL',
     };
     if (editAccForm.type === 'credit' || isDebt) {
       data.creditLimit = editAccForm.creditLimit ? parseFloat(editAccForm.creditLimit) : null;
@@ -339,6 +363,7 @@ function BankCard({
           : 'Wallet',
       bankId: bank.id,
       subtype: newAcc.subtype || undefined,
+      currency: newAcc.currency || 'BRL',
     };
     if (newAcc.type === 'credit' || isDebt) {
       if (newAcc.creditLimit) data.creditLimit = parseFloat(newAcc.creditLimit);
@@ -413,6 +438,14 @@ function BankCard({
                 Dívida: {formatCurrency(debtBalance)}
               </span>
             )}
+            {Object.entries(fxSummary).map(([cur, val]) => {
+              const meta = CURRENCIES.find(c => c.code === cur);
+              return (
+                <span key={cur} className="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-0.5">
+                  {meta?.flag} {formatCurrency(val, cur)}
+                </span>
+              );
+            })}
           </div>
         </button>
 
@@ -560,43 +593,48 @@ function BankCard({
                       </div>
 
                       {/* Balance + details */}
-                      <div className="text-right shrink-0 mr-2">
-                        {acc.type === 'credit' ? (
-                          <>
-                            <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{formatCurrency(Math.abs(acc.balance))}</p>
-                            {acc.creditLimit && (
-                              <p className="text-[10px] text-blue-400 dark:text-slate-500">
-                                Lim {formatCurrency(acc.creditLimit)}
-                              </p>
+                      {(() => {
+                        const cur = acc.currency ?? 'BRL';
+                        const fmt = (v: number) => formatCurrency(v, cur);
+                        const isFx = cur !== 'BRL';
+                        const fxMeta = isFx ? CURRENCIES.find(c => c.code === cur) : null;
+                        return (
+                          <div className="text-right shrink-0 mr-2">
+                            {isFx && (
+                              <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 mb-0.5">
+                                {fxMeta?.flag} {cur}
+                              </span>
                             )}
-                            {(acc.closingDay || acc.dueDay) && (
-                              <p className="text-[10px] text-blue-400 dark:text-slate-500">
-                                {acc.closingDay && `Fecha ${acc.closingDay}`}
-                                {acc.closingDay && acc.dueDay && ' · '}
-                                {acc.dueDay && `Vence ${acc.dueDay}`}
-                              </p>
+                            {acc.type === 'credit' ? (
+                              <>
+                                <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{fmt(Math.abs(acc.balance))}</p>
+                                {acc.creditLimit && <p className="text-[10px] text-blue-400 dark:text-slate-500">Lim {fmt(acc.creditLimit)}</p>}
+                                {(acc.closingDay || acc.dueDay) && (
+                                  <p className="text-[10px] text-blue-400 dark:text-slate-500">
+                                    {acc.closingDay && `Fecha ${acc.closingDay}`}
+                                    {acc.closingDay && acc.dueDay && ' · '}
+                                    {acc.dueDay && `Vence ${acc.dueDay}`}
+                                  </p>
+                                )}
+                              </>
+                            ) : DEBT_TYPES.includes(acc.type) ? (
+                              <>
+                                <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{fmt(acc.balance)}</p>
+                                {acc.creditLimit && <p className="text-[10px] text-blue-400 dark:text-slate-500">Orig. {fmt(acc.creditLimit)}</p>}
+                                {(acc.closingDay || acc.dueDay) && (
+                                  <p className="text-[10px] text-blue-400 dark:text-slate-500">
+                                    {acc.closingDay && `${acc.closingDay}x rest.`}
+                                    {acc.closingDay && acc.dueDay && ' · '}
+                                    {acc.dueDay && `Vence ${acc.dueDay}`}
+                                  </p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-sm font-bold text-blue-900 dark:text-slate-100">{fmt(acc.balance)}</p>
                             )}
-                          </>
-                        ) : DEBT_TYPES.includes(acc.type) ? (
-                          <>
-                            <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{formatCurrency(acc.balance)}</p>
-                            {acc.creditLimit && (
-                              <p className="text-[10px] text-blue-400 dark:text-slate-500">
-                                Orig. {formatCurrency(acc.creditLimit)}
-                              </p>
-                            )}
-                            {(acc.closingDay || acc.dueDay) && (
-                              <p className="text-[10px] text-blue-400 dark:text-slate-500">
-                                {acc.closingDay && `${acc.closingDay}x rest.`}
-                                {acc.closingDay && acc.dueDay && ' · '}
-                                {acc.dueDay && `Vence ${acc.dueDay}`}
-                              </p>
-                            )}
-                          </>
-                        ) : (
-                          <p className="text-sm font-bold text-blue-900 dark:text-slate-100">{formatCurrency(acc.balance)}</p>
-                        )}
-                      </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Actions */}
                       <div className="flex items-center gap-1 shrink-0">

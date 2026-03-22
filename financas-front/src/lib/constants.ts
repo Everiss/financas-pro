@@ -4,10 +4,29 @@ import { BankAccount } from '../types';
 export const BANK_COLORS = ['#3b82f6','#8b5cf6','#ec4899','#10b981','#f59e0b','#ef4444','#06b6d4','#6366f1'];
 export const BANK_ICONS: IconName[] = ['Landmark','Building2','Wallet','CreditCard','PiggyBank','Banknote','TrendingUp','Briefcase'];
 
+export const CURRENCIES: { code: string; label: string; flag: string }[] = [
+  { code: 'BRL', label: 'Real Brasileiro',      flag: '🇧🇷' },
+  { code: 'USD', label: 'Dólar Americano',       flag: '🇺🇸' },
+  { code: 'EUR', label: 'Euro',                  flag: '🇪🇺' },
+  { code: 'GBP', label: 'Libra Esterlina',       flag: '🇬🇧' },
+  { code: 'CHF', label: 'Franco Suíço',          flag: '🇨🇭' },
+  { code: 'JPY', label: 'Iene Japonês',          flag: '🇯🇵' },
+  { code: 'CAD', label: 'Dólar Canadense',       flag: '🇨🇦' },
+  { code: 'AUD', label: 'Dólar Australiano',     flag: '🇦🇺' },
+  { code: 'ARS', label: 'Peso Argentino',        flag: '🇦🇷' },
+  { code: 'CLP', label: 'Peso Chileno',          flag: '🇨🇱' },
+  { code: 'MXN', label: 'Peso Mexicano',         flag: '🇲🇽' },
+  { code: 'UYU', label: 'Peso Uruguaio',         flag: '🇺🇾' },
+  { code: 'PYG', label: 'Guarani Paraguaio',     flag: '🇵🇾' },
+  { code: 'PEN', label: 'Sol Peruano',           flag: '🇵🇪' },
+  { code: 'COP', label: 'Peso Colombiano',       flag: '🇨🇴' },
+];
+
 export const EMPTY_ACC = {
   name: '', type: 'checking' as BankAccount['type'],
   investmentType: 'cdb' as BankAccount['investmentType'],
   subtype: '' as string,
+  currency: 'BRL' as string,
   balance: '', creditLimit: '', closingDay: '', dueDay: '',
   color: '#3b82f6', icon: 'CreditCard',
 };

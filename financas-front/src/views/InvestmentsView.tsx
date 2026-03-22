@@ -132,8 +132,11 @@ export function InvestmentsView({ banks, accounts, transactions, onAporte, onTra
 
           {/* Balance */}
           <div className="text-right shrink-0 mr-2">
+            {(acc.currency && acc.currency !== 'BRL') && (
+              <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 block mb-0.5">{acc.currency}</span>
+            )}
             <p className={`text-base font-bold ${isCash ? 'text-amber-600 dark:text-amber-400' : 'text-blue-900 dark:text-slate-100'}`}>
-              {formatCurrency(acc.balance)}
+              {formatCurrency(acc.balance, acc.currency ?? 'BRL')}
             </p>
             {isCash && <p className="text-[10px] text-blue-400 dark:text-slate-500 font-medium">disponível</p>}
             {isInvestment && <p className="text-[10px] text-blue-400 dark:text-slate-500 font-medium">investido</p>}

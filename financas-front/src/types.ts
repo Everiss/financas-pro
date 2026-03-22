@@ -69,6 +69,7 @@ export interface BankAccount {
   userId: string;
   bankId?: string;
   bank?: Bank;
+  currency?: string;
 }
 
 export interface Goal {

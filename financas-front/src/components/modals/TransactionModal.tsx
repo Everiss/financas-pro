@@ -6,7 +6,7 @@ import { Button, Input, TextArea } from '../ui';
 import { transactionsApi, aiApi, transfersApi, ReceiptExtraction, CreateTransactionPayload } from '../../services/api';
 import { Transaction, Category, BankAccount } from '../../types';
 import { PlanGate } from '../PlanGate';
-import { SUBTYPE_LABELS, DEBT_TYPES } from '../../lib/constants';
+import { SUBTYPE_LABELS, DEBT_TYPES, CURRENCIES } from '../../lib/constants';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,19 +24,23 @@ function productLabel(acc: BankAccount): string {
   const bankName = acc.bank?.name;
   const typeName = TYPE_LABELS[acc.type] ?? acc.type;
   const subtypeName = acc.subtype ? SUBTYPE_LABELS[acc.subtype] : null;
+  const cur = acc.currency ?? 'BRL';
+  const fmt = (v: number) => formatCurrency(v, cur);
+  const fxMeta = cur !== 'BRL' ? CURRENCIES.find(c => c.code === cur) : null;
+  const curLabel = fxMeta ? ` ${fxMeta.flag}${cur}` : '';
 
   let balancePart: string;
   if (acc.type === 'credit') {
-    balancePart = `Fatura: ${formatCurrency(Math.abs(acc.balance))}`;
-    if (acc.creditLimit) balancePart += ` / Lim: ${formatCurrency(acc.creditLimit)}`;
+    balancePart = `Fatura: ${fmt(Math.abs(acc.balance))}`;
+    if (acc.creditLimit) balancePart += ` / Lim: ${fmt(acc.creditLimit)}`;
   } else if (DEBT_TYPES.includes(acc.type)) {
-    balancePart = `Devedor: ${formatCurrency(acc.balance)}`;
+    balancePart = `Devedor: ${fmt(acc.balance)}`;
   } else {
-    balancePart = formatCurrency(acc.balance);
+    balancePart = fmt(acc.balance);
   }
 
   const nameParts = [bankName, acc.name, typeName, subtypeName].filter(Boolean);
-  return `${nameParts.join(' · ')} — ${balancePart}`;
+  return `${nameParts.join(' · ')}${curLabel} — ${balancePart}`;
 }
 
 /** Accounts available per mode */
