@@ -178,8 +178,15 @@ export interface SubscriptionStatus {
 // --- AI ---
 
 export const aiApi = {
-  getInsights: () => request<AiInsight[]>('/ai/insights', { method: 'POST' }),
-  getGoalsStrategy: () => request<AiGoalsStrategy>('/ai/goals-strategy', { method: 'POST' }),
+  getInsights:          () => request<AiInsight[]>('/ai/insights', { method: 'POST' }),
+  getGoalsStrategy:     () => request<AiGoalsStrategy>('/ai/goals-strategy', { method: 'POST' }),
+  getHealthScore:       () => request<AiHealthScore>('/ai/health-score', { method: 'POST' }),
+  getSpendingForecast:  () => request<AiSpendingForecast>('/ai/spending-forecast', { method: 'POST' }),
+  getInvestmentAnalysis:() => request<AiInvestmentAnalysis>('/ai/investment-analysis', { method: 'POST' }),
+  chat: (message: string) => request<{ reply: string }>('/ai/chat', {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  }),
   extractReceipt: async (file: File): Promise<ReceiptExtraction> => {
     const token = await getToken();
     const body = new FormData();
@@ -472,4 +479,27 @@ export interface AiGoalsStrategy {
     estimatedTime: string;
     monthlySavingNeeded: string;
   }>;
+}
+
+export interface AiHealthScore {
+  score: number;
+  level: string;
+  summary: string;
+  components: Array<{ name: string; score: number; comment: string }>;
+  recommendations: string[];
+}
+
+export interface AiSpendingForecast {
+  totalForecast: number;
+  summary: string;
+  categories: Array<{ category: string; forecast: number; trend: 'stable' | 'up' | 'down'; comment: string }>;
+  alert: string | null;
+}
+
+export interface AiInvestmentAnalysis {
+  diversificationScore: number;
+  summary: string;
+  strengths: string[];
+  risks: string[];
+  recommendations: Array<{ action: string; reason: string; priority: 'alta' | 'média' | 'baixa' }>;
 }

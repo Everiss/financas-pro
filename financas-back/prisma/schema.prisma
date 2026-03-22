@@ -188,6 +188,7 @@ model AiInsightCache {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   insightsJson String?  @map("insights_json") @db.Text
   strategyJson String?  @map("strategy_json") @db.Text
+  extraJson    String?  @map("extra_json") @db.Text
   isDirty      Boolean  @default(true) @map("is_dirty")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

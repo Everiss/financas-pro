@@ -183,4 +183,215 @@ Retorne um JSON com o seguinte formato exato:
 
     return result;
   }
+
+  async getHealthScore(userId: string) {
+    const extra = await this.getExtra(userId);
+    if (extra.healthScore) return extra.healthScore;
+
+    const [accounts, transactions, reminders] = await Promise.all([
+      this.prisma.bankAccount.findMany({ where: { userId } }),
+      this.prisma.transaction.findMany({
+        where: { userId, date: { gte: new Date(new Date().setDate(1)) }, isTransfer: false },
+      }),
+      this.prisma.reminder.findMany({ where: { userId } }),
+    ]);
+
+    const income  = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+    const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+    const savings = accounts.filter(a => a.type === 'savings').reduce((s, a) => s + Number(a.balance), 0);
+    const investBalance = accounts.filter(a => a.type === 'investment').reduce((s, a) => s + Number(a.balance), 0);
+    const creditCards = accounts.filter(a => a.type === 'credit');
+    const totalCredit = creditCards.reduce((s, a) => s + Number(a.balance), 0);
+    const totalLimit  = creditCards.reduce((s, a) => s + Number(a.creditLimit ?? 0), 0);
+
+    const prompt = `Você é um consultor financeiro. Calcule um score de saúde financeira (0-100) baseado nos dados abaixo e retorne um JSON em português (BR).
+
+Dados do mês atual:
+- Receita: R$ ${income.toFixed(2)}
+- Despesa: R$ ${expense.toFixed(2)}
+- Taxa de poupança: ${income > 0 ? (((income - expense) / income) * 100).toFixed(1) : 0}%
+- Saldo poupança: R$ ${savings.toFixed(2)}
+- Saldo investimentos: R$ ${investBalance.toFixed(2)}
+- Uso do crédito: R$ ${totalCredit.toFixed(2)} de R$ ${totalLimit.toFixed(2)} disponível
+- Lembretes ativos: ${reminders.length}
+
+Retorne APENAS JSON neste formato:
+{
+  "score": 75,
+  "level": "Bom",
+  "summary": "Resumo geral em uma frase",
+  "components": [
+    { "name": "Taxa de Poupança", "score": 80, "comment": "..." },
+    { "name": "Uso do Crédito",   "score": 60, "comment": "..." },
+    { "name": "Reserva de Emergência", "score": 40, "comment": "..." },
+    { "name": "Investimentos",    "score": 70, "comment": "..." }
+  ],
+  "recommendations": ["recomendação 1", "recomendação 2", "recomendação 3"]
+}`;
+
+    const message = await this.client.messages.create({
+      model: this.model, max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+    await this.saveExtra(userId, { healthScore: result });
+    return result;
+  }
+
+  async getSpendingForecast(userId: string) {
+    const extra = await this.getExtra(userId);
+    if (extra.forecast) return extra.forecast;
+
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: { userId, type: 'expense', isTransfer: false, date: { gte: threeMonthsAgo } },
+      include: { category: true },
+    });
+
+    const byCategory: Record<string, number[]> = {};
+    transactions.forEach(t => {
+      const name = t.category?.name ?? 'Outros';
+      const monthKey = `${t.date.getFullYear()}-${t.date.getMonth()}`;
+      if (!byCategory[name]) byCategory[name] = [];
+      byCategory[name].push(Number(t.amount));
+    });
+
+    const summary = Object.entries(byCategory).map(([cat, vals]) => ({
+      category: cat,
+      avg: vals.reduce((s, v) => s + v, 0) / 3,
+      total: vals.reduce((s, v) => s + v, 0),
+    }));
+
+    const prompt = `Você é um analista financeiro. Com base nos gastos dos últimos 3 meses, faça uma previsão para o próximo mês em português (BR).
+
+Média mensal de gastos por categoria:
+${summary.map(s => `- ${s.category}: R$ ${s.avg.toFixed(2)}/mês`).join('\n')}
+
+Retorne APENAS JSON neste formato:
+{
+  "totalForecast": 2500.00,
+  "summary": "Resumo da previsão em uma frase",
+  "categories": [
+    { "category": "Alimentação", "forecast": 800.00, "trend": "stable|up|down", "comment": "..." }
+  ],
+  "alert": "alerta principal se houver, ou null"
+}`;
+
+    const message = await this.client.messages.create({
+      model: this.model, max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+    await this.saveExtra(userId, { forecast: result });
+    return result;
+  }
+
+  async getInvestmentAnalysis(userId: string) {
+    const extra = await this.getExtra(userId);
+    if (extra.investmentAnalysis) return extra.investmentAnalysis;
+
+    const [accounts, transactions] = await Promise.all([
+      this.prisma.bankAccount.findMany({ where: { userId, type: 'investment' } }),
+      this.prisma.transaction.findMany({
+        where: { userId, date: { gte: new Date(new Date().setDate(1)) }, isTransfer: false },
+      }),
+    ]);
+
+    const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+    const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+    const totalInvested = accounts.reduce((s, a) => s + Number(a.balance), 0);
+
+    const portfolioSummary = accounts.map(a => ({
+      name: a.name,
+      type: a.investmentType ?? 'other',
+      balance: Number(a.balance),
+      percent: totalInvested > 0 ? ((Number(a.balance) / totalInvested) * 100).toFixed(1) : '0',
+    }));
+
+    const prompt = `Você é um consultor de investimentos. Analise a carteira abaixo e retorne recomendações em português (BR).
+
+Carteira atual (total: R$ ${totalInvested.toFixed(2)}):
+${portfolioSummary.map(a => `- ${a.name} (${a.type}): R$ ${a.balance.toFixed(2)} (${a.percent}%)`).join('\n')}
+
+Fluxo do mês:
+- Receita: R$ ${income.toFixed(2)} | Despesa: R$ ${expense.toFixed(2)} | Disponível: R$ ${(income - expense).toFixed(2)}
+
+Retorne APENAS JSON neste formato:
+{
+  "diversificationScore": 75,
+  "summary": "Resumo da carteira em uma frase",
+  "strengths": ["ponto forte 1", "ponto forte 2"],
+  "risks": ["risco 1", "risco 2"],
+  "recommendations": [
+    { "action": "Aumentar posição em renda fixa", "reason": "...", "priority": "alta|média|baixa" }
+  ]
+}`;
+
+    const message = await this.client.messages.create({
+      model: this.model, max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+    await this.saveExtra(userId, { investmentAnalysis: result });
+    return result;
+  }
+
+  async chat(userId: string, message: string) {
+    const [accounts, transactions, goals] = await Promise.all([
+      this.prisma.bankAccount.findMany({ where: { userId } }),
+      this.prisma.transaction.findMany({
+        where: { userId, date: { gte: new Date(new Date().setDate(1)) }, isTransfer: false },
+        include: { category: true },
+      }),
+      this.prisma.goal.findMany({ where: { userId } }),
+    ]);
+
+    const income  = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+    const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+    const netWorth = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + Number(a.balance), 0);
+
+    const systemContext = `Você é um assistente financeiro pessoal do app Finanças Pro. Responda sempre em português (BR), de forma clara, direta e prática. Não invente dados — use apenas os fornecidos.
+
+Contexto financeiro do usuário (mês atual):
+- Patrimônio líquido: R$ ${netWorth.toFixed(2)}
+- Receita do mês: R$ ${income.toFixed(2)}
+- Despesas do mês: R$ ${expense.toFixed(2)}
+- Saldo disponível: R$ ${(income - expense).toFixed(2)}
+- Contas: ${accounts.map(a => `${a.name} (${a.type}): R$ ${Number(a.balance).toFixed(2)}`).join(', ')}
+- Metas: ${goals.map(g => `${g.name}: ${Number(g.currentAmount).toFixed(2)}/${Number(g.targetAmount).toFixed(2)}`).join(', ')}`;
+
+    const response = await this.client.messages.create({
+      model: this.model,
+      max_tokens: 1024,
+      system: systemContext,
+      messages: [{ role: 'user', content: message }],
+    });
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    return { reply: text };
+  }
+
+  private async getExtra(userId: string): Promise<Record<string, any>> {
+    const cache = await this.prisma.aiInsightCache.findUnique({ where: { userId } });
+    if (!cache?.extraJson) return {};
+    try { return JSON.parse(cache.extraJson); } catch { return {}; }
+  }
+
+  private async saveExtra(userId: string, patch: Record<string, any>) {
+    const current = await this.getExtra(userId);
+    const updated = { ...current, ...patch };
+    await this.prisma.aiInsightCache.upsert({
+      where: { userId },
+      create: { userId, extraJson: JSON.stringify(updated), isDirty: false },
+      update: { extraJson: JSON.stringify(updated) },
+    });
+  }
 }

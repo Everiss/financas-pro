@@ -59,6 +59,7 @@ import { OpenFinanceView } from './views/OpenFinanceView';
 import { PlanosView } from './views/PlanosView';
 import { AuditLogView } from './views/AuditLogView';
 import { FaturaView } from './views/FaturaView';
+import { AnalyticsView } from './views/AnalyticsView';
 
 // --- API → Frontend type adapters ---
 
@@ -171,7 +172,7 @@ function AppInner() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'fatura' | 'investments' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'fatura' | 'investments' | 'analytics' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos'>('dashboard');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transferenciaModal, setTransferenciaModal] = useState<{ open: boolean; prefillToId?: string; prefillAmount?: number }>({ open: false });
   const [dashboardMonth, setDashboardMonth] = useState(() => {
@@ -433,6 +434,7 @@ function AppInner() {
               <NavButton active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} icon="List" label="Transações" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'fatura'} onClick={() => setActiveTab('fatura')} icon="CreditCard" label="Faturas" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'investments'} onClick={() => setActiveTab('investments')} icon="TrendingUp" label="Investimentos" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} icon="Sparkles" label="Análises IA" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon="Tag" label="Categorias" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'calendar'} onClick={() => setActiveTab('calendar')} icon="Calendar" label="Calendário" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'reminders'} onClick={() => setActiveTab('reminders')} icon="List" label="Lembretes" collapsed={sidebarCollapsed} />
@@ -521,6 +523,7 @@ function AppInner() {
                   {activeTab === 'goals' && 'Minhas Metas'}
                   {activeTab === 'audit' && 'Histórico de Operações'}
                   {activeTab === 'openfinance' && 'Open Finance'}
+                  {activeTab === 'analytics' && 'Análises com IA'}
                   {activeTab === 'planos' && 'Planos & Assinatura'}
                 </h2>
                 <p className="text-blue-500 dark:text-slate-400 font-medium mt-1">
@@ -535,6 +538,7 @@ function AppInner() {
                   {activeTab === 'goals' && 'Planeje e acompanhe seus sonhos financeiros.'}
                   {activeTab === 'audit' && 'Rastreabilidade de todas as operações realizadas.'}
                   {activeTab === 'openfinance' && 'Conecte suas contas bancárias reais via Open Finance Brasil.'}
+                  {activeTab === 'analytics' && 'Inteligência artificial aplicada às suas finanças.'}
                   {activeTab === 'planos' && 'Escolha o plano ideal para você.'}
                 </p>
               </div>
@@ -688,6 +692,12 @@ function AppInner() {
                     onTransfer={() => setTransferenciaModal({ open: true })}
                     onAddTransaction={() => setIsAddModalOpen(true)}
                   />
+                </motion.div>
+              )}
+
+              {activeTab === 'analytics' && (
+                <motion.div key="analytics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                  <AnalyticsView />
                 </motion.div>
               )}
 

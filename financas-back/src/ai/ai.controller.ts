@@ -1,4 +1,4 @@
-import { Controller, Post, UseGuards, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
+import { Controller, Post, UseGuards, UploadedFile, UseInterceptors, BadRequestException, Body } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AiService } from './ai.service';
@@ -27,6 +27,30 @@ export class AiController {
   @RequireFeature('ai')
   getGoalsStrategy(@CurrentUser() user: User) {
     return this.aiService.getGoalsStrategy(user.id);
+  }
+
+  @Post('health-score')
+  @RequireFeature('ai')
+  getHealthScore(@CurrentUser() user: User) {
+    return this.aiService.getHealthScore(user.id);
+  }
+
+  @Post('spending-forecast')
+  @RequireFeature('ai')
+  getSpendingForecast(@CurrentUser() user: User) {
+    return this.aiService.getSpendingForecast(user.id);
+  }
+
+  @Post('investment-analysis')
+  @RequireFeature('ai')
+  getInvestmentAnalysis(@CurrentUser() user: User) {
+    return this.aiService.getInvestmentAnalysis(user.id);
+  }
+
+  @Post('chat')
+  @RequireFeature('ai')
+  chat(@CurrentUser() user: User, @Body() body: { message: string }) {
+    return this.aiService.chat(user.id, body.message);
   }
 
   @Post('extract-receipt')
