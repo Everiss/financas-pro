@@ -55,7 +55,7 @@ export interface Bank {
 export interface BankAccount {
   id: string;
   name: string;
-  type: 'checking' | 'savings' | 'investment' | 'credit';
+  type: 'checking' | 'savings' | 'investment' | 'credit' | 'loan' | 'financing';
   investmentType?: 'cdb' | 'stock' | 'fund' | 'fii' | 'other' | 'tesouro' | 'previdencia' | 'crypto';
   subtype?: string;
   balance: number;

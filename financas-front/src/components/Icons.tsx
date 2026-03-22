@@ -55,6 +55,8 @@ export const Icons = {
   Globe: Lucide.Globe,
   ShoppingCart: Lucide.ShoppingCart,
   Circle: Lucide.Circle,
+  HandCoins: Lucide.HandCoins,
+  Receipt: Lucide.Receipt,
 };
 
 export type IconName = keyof typeof Icons;

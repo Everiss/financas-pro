@@ -7,12 +7,17 @@ import { banksApi, accountsApi, transactionsApi, remindersApi } from '../service
 import { Transaction, BankAccount, Bank, Reminder } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { PlanGate } from '../components/PlanGate';
-import { BANK_COLORS, BANK_ICONS, EMPTY_ACC, SUBTYPE_OPTIONS, SUBTYPE_LABELS } from '../lib/constants';
+import { BANK_COLORS, BANK_ICONS, EMPTY_ACC, SUBTYPE_OPTIONS, SUBTYPE_LABELS, DEBT_TYPES } from '../lib/constants';
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
 const TYPE_LABELS: Record<string, string> = {
-  checking: 'Corrente', savings: 'Poupança', investment: 'Investimento', credit: 'Cartão de Crédito',
+  checking:   'Corrente',
+  savings:    'Poupança',
+  investment: 'Investimento',
+  credit:     'Cartão de Crédito',
+  loan:       'Empréstimo',
+  financing:  'Financiamento',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -20,6 +25,13 @@ const TYPE_COLORS: Record<string, string> = {
   savings:    'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
   investment: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
   credit:     'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+  loan:       'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400',
+  financing:  'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+};
+
+const DEBT_ICONS: Record<string, string> = {
+  loan:      'HandCoins',
+  financing: 'Receipt',
 };
 
 const INVESTMENT_OPTIONS = [
@@ -38,6 +50,8 @@ const TYPE_OPTIONS = [
   { value: 'savings',    label: 'Poupança'   },
   { value: 'investment', label: 'Invest.'    },
   { value: 'credit',     label: 'Cartão'     },
+  { value: 'loan',       label: 'Emprést.'   },
+  { value: 'financing',  label: 'Financ.'    },
 ];
 
 // ─── AccountForm (add / edit) ─────────────────────────────────────────────────
@@ -61,36 +75,42 @@ function AccountForm({
   submitColor?: string;
   error?: string;
 }) {
+  const isDebt = DEBT_TYPES.includes(value.type);
+
   return (
     <div className="space-y-3">
       <Input
-        label="Nome"
-        placeholder="Ex: Conta Corrente, Roxinho..."
+        label="Nome do Produto"
+        placeholder={isDebt ? 'Ex: Financiamento Carro, CDC Itaú...' : 'Ex: Conta Corrente, Roxinho...'}
         value={value.name}
         onChange={e => onChange({ ...value, name: e.target.value })}
         error={error && !value.name.trim() ? error : undefined}
       />
       <RadioGroup
-        label="Tipo"
+        label="Tipo de Produto"
         value={value.type}
         onChange={val => onChange({ ...value, type: val as BankAccount['type'], subtype: '' })}
         options={TYPE_OPTIONS}
       />
       {SUBTYPE_OPTIONS[value.type] && (
         <Select
-          label="Subtipo"
+          label="Modalidade"
           value={value.subtype}
           onChange={e => onChange({ ...value, subtype: e.target.value })}
           options={[{ value: '', label: '— Selecione (opcional) —' }, ...SUBTYPE_OPTIONS[value.type]]}
         />
       )}
-      <Input
-        label={value.type === 'credit' ? 'Fatura atual' : 'Saldo'}
-        inputMode="decimal"
-        placeholder="0,00"
-        value={value.balance}
-        onChange={e => onChange({ ...value, balance: e.target.value.replace(',', '.') })}
-      />
+      {/* Balance field — label changes by type */}
+      {!isDebt && (
+        <Input
+          label={value.type === 'credit' ? 'Fatura atual' : 'Saldo'}
+          inputMode="decimal"
+          placeholder="0,00"
+          value={value.balance}
+          onChange={e => onChange({ ...value, balance: e.target.value.replace(',', '.') })}
+        />
+      )}
+      {/* Investment subtype */}
       {value.type === 'investment' && (
         <Select
           label="Tipo de Investimento"
@@ -99,6 +119,7 @@ function AccountForm({
           options={INVESTMENT_OPTIONS}
         />
       )}
+      {/* Credit card config */}
       {value.type === 'credit' && (
         <div className="space-y-3 p-3 rounded-xl bg-amber-50/50 dark:bg-slate-800/50 border border-amber-100 dark:border-slate-700">
           <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Configuração do Cartão</p>
@@ -119,6 +140,44 @@ function AccountForm({
             />
             <Input
               label="Vencimento"
+              type="number"
+              placeholder="Dia"
+              value={value.dueDay}
+              onChange={e => onChange({ ...value, dueDay: e.target.value })}
+            />
+          </div>
+        </div>
+      )}
+      {/* Loan / Financing config */}
+      {isDebt && (
+        <div className="space-y-3 p-3 rounded-xl bg-rose-50/50 dark:bg-slate-800/50 border border-rose-100 dark:border-slate-700">
+          <p className="text-xs font-semibold text-rose-700 dark:text-rose-400">
+            {value.type === 'financing' ? 'Detalhes do Financiamento' : 'Detalhes do Empréstimo'}
+          </p>
+          <Input
+            label="Saldo devedor atual"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={value.balance}
+            onChange={e => onChange({ ...value, balance: e.target.value.replace(',', '.') })}
+          />
+          <Input
+            label="Valor original"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={value.creditLimit}
+            onChange={e => onChange({ ...value, creditLimit: e.target.value.replace(',', '.') })}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Parcelas restantes"
+              type="number"
+              placeholder="Qtd"
+              value={value.closingDay}
+              onChange={e => onChange({ ...value, closingDay: e.target.value })}
+            />
+            <Input
+              label="Dia do vencimento"
               type="number"
               placeholder="Dia"
               value={value.dueDay}
@@ -180,8 +239,9 @@ function BankCard({
   const [newAccError,  setNewAccError]  = useState('');
 
   const BankIcon = Icons[bank.icon as IconName] || Icons.Landmark;
-  const totalBalance = accounts.filter(a => a.type !== 'credit').reduce((s, a) => s + a.balance, 0);
+  const totalBalance = accounts.filter(a => a.type !== 'credit' && !DEBT_TYPES.includes(a.type)).reduce((s, a) => s + a.balance, 0);
   const creditBalance = accounts.filter(a => a.type === 'credit').reduce((s, a) => s + Math.abs(a.balance), 0);
+  const debtBalance = accounts.filter(a => DEBT_TYPES.includes(a.type)).reduce((s, a) => s + a.balance, 0);
 
   // ── Bank actions ────────────────────────────────────────────────────────────
 
@@ -198,7 +258,7 @@ function BankCard({
     const linkedRem = reminders.filter(r => r.accountId && bankAccIds.includes(r.accountId));
 
     const items: string[] = [
-      `${accounts.length} conta(s) vinculada(s)`,
+      `${accounts.length} produto(s) vinculado(s)`,
       ...(linkedTx.length  > 0 ? [`${linkedTx.length} transação(ões) vinculada(s)`]  : []),
       ...(linkedRem.length > 0 ? [`${linkedRem.length} lembrete(s) vinculado(s)`] : []),
     ];
@@ -234,20 +294,27 @@ function BankCard({
   };
 
   const handleSaveAccount = async (id: string) => {
-    if (!editAccForm.name.trim()) { setEditAccError('Informe o nome da conta.'); return; }
+    if (!editAccForm.name.trim()) { setEditAccError('Informe o nome do produto.'); return; }
     setEditAccError('');
+    const isDebt = DEBT_TYPES.includes(editAccForm.type);
     const data: any = {
       name: editAccForm.name.trim(),
       type: editAccForm.type,
       balance: parseFloat(editAccForm.balance) || 0,
       color: editAccForm.color,
-      icon: editAccForm.type === 'investment' ? 'TrendingUp' : editAccForm.type === 'credit' ? 'CreditCard' : editAccForm.icon,
+      icon: editAccForm.type === 'investment' ? 'TrendingUp'
+          : editAccForm.type === 'credit' ? 'CreditCard'
+          : isDebt ? DEBT_ICONS[editAccForm.type]
+          : editAccForm.icon,
       subtype: editAccForm.subtype || null,
     };
-    if (editAccForm.type === 'credit') {
+    if (editAccForm.type === 'credit' || isDebt) {
       data.creditLimit = editAccForm.creditLimit ? parseFloat(editAccForm.creditLimit) : null;
       data.closingDay  = editAccForm.closingDay  ? parseInt(editAccForm.closingDay)    : null;
       data.dueDay      = editAccForm.dueDay      ? parseInt(editAccForm.dueDay)        : null;
+    }
+    if (!isDebt && editAccForm.type !== 'credit') {
+      data.creditLimit = null; data.closingDay = null; data.dueDay = null;
     }
     if (editAccForm.type === 'investment') data.investmentType = editAccForm.investmentType;
     try {
@@ -258,18 +325,22 @@ function BankCard({
   };
 
   const handleAddAccount = async () => {
-    if (!newAcc.name.trim()) { setNewAccError('Informe o nome da conta.'); return; }
+    if (!newAcc.name.trim()) { setNewAccError('Informe o nome do produto.'); return; }
     setNewAccError('');
+    const isDebt = DEBT_TYPES.includes(newAcc.type);
     const data: any = {
       name: newAcc.name.trim(),
       type: newAcc.type,
       balance: parseFloat(newAcc.balance) || 0,
       color: bank.color,
-      icon: newAcc.type === 'investment' ? 'TrendingUp' : newAcc.type === 'credit' ? 'CreditCard' : 'Wallet',
+      icon: newAcc.type === 'investment' ? 'TrendingUp'
+          : newAcc.type === 'credit' ? 'CreditCard'
+          : isDebt ? DEBT_ICONS[newAcc.type]
+          : 'Wallet',
       bankId: bank.id,
       subtype: newAcc.subtype || undefined,
     };
-    if (newAcc.type === 'credit') {
+    if (newAcc.type === 'credit' || isDebt) {
       if (newAcc.creditLimit) data.creditLimit = parseFloat(newAcc.creditLimit);
       if (newAcc.closingDay)  data.closingDay  = parseInt(newAcc.closingDay);
       if (newAcc.dueDay)      data.dueDay      = parseInt(newAcc.dueDay);
@@ -291,7 +362,7 @@ function BankCard({
       ...(linkedRem.length > 0 ? [`${linkedRem.length} lembrete(s) vinculado(s)`] : []),
     ];
     const ok = await confirm({
-      title: `Excluir "${acc.name}"?`,
+      title: `Excluir produto "${acc.name}"?`,
       description: items.length > 0 ? 'Os seguintes dados também serão removidos:' : 'Esta ação não pode ser desfeita.',
       items,
       variant: 'danger',
@@ -327,7 +398,7 @@ function BankCard({
           <p className="font-bold text-blue-900 dark:text-slate-100 text-base truncate">{bank.name}</p>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
             <span className="text-xs text-blue-400 dark:text-slate-500">
-              {accounts.length} {accounts.length === 1 ? 'conta' : 'contas'}
+              {accounts.length} {accounts.length === 1 ? 'produto' : 'produtos'}
             </span>
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
               {formatCurrency(totalBalance)}
@@ -335,6 +406,11 @@ function BankCard({
             {creditBalance > 0 && (
               <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
                 Fatura: {formatCurrency(creditBalance)}
+              </span>
+            )}
+            {debtBalance > 0 && (
+              <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                Dívida: {formatCurrency(debtBalance)}
               </span>
             )}
           </div>
@@ -444,7 +520,7 @@ function BankCard({
             <div className="border-t border-blue-50 dark:border-slate-800">
               {accounts.length === 0 && !addingAcc && (
                 <p className="px-5 py-4 text-xs text-blue-400 dark:text-slate-500 italic">
-                  Nenhuma conta cadastrada neste banco.
+                  Nenhum produto cadastrado nesta instituição.
                 </p>
               )}
 
@@ -501,6 +577,22 @@ function BankCard({
                               </p>
                             )}
                           </>
+                        ) : DEBT_TYPES.includes(acc.type) ? (
+                          <>
+                            <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{formatCurrency(acc.balance)}</p>
+                            {acc.creditLimit && (
+                              <p className="text-[10px] text-blue-400 dark:text-slate-500">
+                                Orig. {formatCurrency(acc.creditLimit)}
+                              </p>
+                            )}
+                            {(acc.closingDay || acc.dueDay) && (
+                              <p className="text-[10px] text-blue-400 dark:text-slate-500">
+                                {acc.closingDay && `${acc.closingDay}x rest.`}
+                                {acc.closingDay && acc.dueDay && ' · '}
+                                {acc.dueDay && `Vence ${acc.dueDay}`}
+                              </p>
+                            )}
+                          </>
                         ) : (
                           <p className="text-sm font-bold text-blue-900 dark:text-slate-100">{formatCurrency(acc.balance)}</p>
                         )}
@@ -516,14 +608,14 @@ function BankCard({
                               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
                               : 'text-blue-300 dark:text-slate-600 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-700',
                           )}
-                          title="Editar conta"
+                          title="Editar produto"
                         >
                           <Icons.Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteAccount(acc)}
                           className="p-1.5 rounded-xl text-blue-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                          title="Excluir conta"
+                          title="Excluir produto"
                         >
                           <Icons.Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -542,7 +634,7 @@ function BankCard({
                         >
                           <div className="px-5 pb-5 pt-3 bg-blue-50/30 dark:bg-slate-800/30 border-t border-blue-100 dark:border-slate-700">
                             <p className="text-xs font-bold text-blue-500 dark:text-slate-400 uppercase tracking-wider mb-3">
-                              Editando · {acc.name}
+                              Editando produto · {acc.name}
                             </p>
                             <AccountForm
                               value={editAccForm}
@@ -572,7 +664,7 @@ function BankCard({
                       transition={{ duration: 0.15 }}
                     >
                       <p className="text-xs font-bold text-blue-500 dark:text-slate-400 uppercase tracking-wider mb-3">
-                        Nova conta em {bank.name}
+                        Novo produto em {bank.name}
                       </p>
                       <AccountForm
                         value={newAcc}
@@ -593,7 +685,7 @@ function BankCard({
                           style={{ color: bank.color }}
                         >
                           <Icons.Plus className="w-4 h-4" />
-                          Adicionar conta ou cartão
+                          Adicionar produto
                         </button>
                       </PlanGate>
                     </motion.div>
@@ -641,7 +733,7 @@ export function AccountManager({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-blue-400 dark:text-slate-500 font-medium">
-            {banks.length} {banks.length === 1 ? 'banco' : 'bancos'} · {accounts.length} {accounts.length === 1 ? 'conta' : 'contas'}
+            {banks.length} {banks.length === 1 ? 'instituição' : 'instituições'} · {accounts.length} {accounts.length === 1 ? 'produto' : 'produtos'}
           </p>
         </div>
         <Button onClick={() => setIsAddingBank(v => !v)} variant="secondary">
