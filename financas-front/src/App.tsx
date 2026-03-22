@@ -113,6 +113,7 @@ function toAccount(r: AccountResponse): BankAccount {
     name: r.name,
     type: r.type,
     investmentType: r.investmentType,
+    subtype: r.subtype,
     balance: Number(r.balance),
     creditLimit: r.creditLimit != null ? Number(r.creditLimit) : undefined,
     closingDay: r.closingDay,
@@ -121,6 +122,7 @@ function toAccount(r: AccountResponse): BankAccount {
     icon: r.icon,
     userId: r.userId,
     bankId: r.bankId,
+    bank: r.bank ? { id: r.bank.id, name: r.bank.name, color: r.bank.color, icon: r.bank.icon, userId: r.bank.userId } : undefined,
   };
 }
 

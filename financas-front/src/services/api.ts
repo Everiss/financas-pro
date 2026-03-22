@@ -403,14 +403,15 @@ export interface CreateBankPayload {
 export interface AccountResponse {
   id: string;
   name: string;
-  type: 'checking' | 'savings' | 'investment' | 'credit';
+  type: 'checking' | 'savings' | 'investment' | 'credit' | 'loan' | 'financing';
   balance: number;
   color: string;
   icon: string;
   creditLimit?: number;
   closingDay?: number;
   dueDay?: number;
-  investmentType?: 'cdb' | 'stock' | 'fund' | 'fii' | 'other';
+  investmentType?: 'cdb' | 'stock' | 'fund' | 'fii' | 'other' | 'tesouro' | 'previdencia' | 'crypto';
+  subtype?: string;
   bankId?: string;
   bank?: BankResponse;
   userId: string;
@@ -418,14 +419,15 @@ export interface AccountResponse {
 
 export interface CreateAccountPayload {
   name: string;
-  type: 'checking' | 'savings' | 'investment' | 'credit';
+  type: 'checking' | 'savings' | 'investment' | 'credit' | 'loan' | 'financing';
   balance?: number;
   color?: string;
   icon?: string;
   creditLimit?: number;
   closingDay?: number;
   dueDay?: number;
-  investmentType?: 'cdb' | 'stock' | 'fund' | 'fii' | 'other';
+  investmentType?: 'cdb' | 'stock' | 'fund' | 'fii' | 'other' | 'tesouro' | 'previdencia' | 'crypto';
+  subtype?: string;
   bankId?: string;
 }
 
