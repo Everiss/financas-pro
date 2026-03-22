@@ -337,7 +337,7 @@ export interface CreateTransactionPayload {
   date: string;
   description?: string;
   paymentMethod?: 'debit' | 'credit';
-  accountId?: string;
+  accountId: string;
   categoryId?: string;
   isTransfer?: boolean;
 }

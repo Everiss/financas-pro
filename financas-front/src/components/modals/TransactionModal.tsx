@@ -25,7 +25,7 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
       amount: '',
       type: 'expense' as 'income' | 'expense',
       category: categories[0]?.id || '',
-      accountId: accounts.find(a => a.type !== 'credit')?.id || '',
+      accountId: '',
       paymentMethod: 'debit' as 'debit' | 'credit',
       date: new Date().toISOString().split('T')[0],
       description: '',
@@ -96,7 +96,10 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = parseFloat(form.amount);
-    if (!form.amount || isNaN(amount) || amount <= 0 || !form.category || !form.date) return;
+    if (!form.amount || isNaN(amount) || amount <= 0 || !form.category || !form.date || !form.accountId) {
+      setError('Preencha todos os campos obrigatórios, incluindo a conta.');
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -106,7 +109,7 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
         categoryId: form.category,
         date: form.date,
         description: form.description || undefined,
-        accountId: form.accountId || undefined,
+        accountId: form.accountId,
       };
       if (form.type === 'expense') {
         data.paymentMethod = form.paymentMethod;
@@ -202,8 +205,7 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
             value={form.type}
             onChange={val => {
               const type = val as 'income' | 'expense';
-              const validAccounts = accounts.filter(a => a.type !== 'credit');
-              setForm({ ...form, type, paymentMethod: 'debit', accountId: validAccounts[0]?.id || '' });
+              setForm({ ...form, type, paymentMethod: 'debit', accountId: '' });
             }}
             options={[
               { value: 'expense', label: 'Despesa' },
@@ -236,8 +238,7 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
                 value={form.paymentMethod}
                 onChange={val => {
                   const method = val as 'debit' | 'credit';
-                  const validAccounts = accounts.filter(a => method === 'credit' ? a.type === 'credit' : a.type !== 'credit');
-                  setForm({ ...form, paymentMethod: method, accountId: validAccounts[0]?.id || '' });
+                  setForm({ ...form, paymentMethod: method, accountId: '' });
                 }}
                 options={[
                   { value: 'debit', label: 'Débito / Dinheiro / Pix' },
@@ -253,26 +254,45 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
                   required
                   value={form.accountId}
                   onChange={e => setForm({ ...form, accountId: e.target.value })}
-                  options={accounts
-                    .filter(a => a.type === 'credit')
-                    .map(a => ({ value: a.id, label: `${a.name} (Fatura: ${formatCurrency(Math.abs(getAccountBalance(a)))})` }))
-                  }
+                  options={[
+                    { value: '', label: '— Selecione o cartão —' },
+                    ...accounts
+                      .filter(a => a.type === 'credit')
+                      .map(a => ({ value: a.id, label: `${a.name} (Fatura: ${formatCurrency(Math.abs(getAccountBalance(a)))})` }))
+                  ]}
                 />
                 {accounts.filter(a => a.type === 'credit').length === 0 && (
                   <p className="text-xs text-red-500 font-medium">Você não possui cartões de crédito cadastrados.</p>
                 )}
+                {(() => {
+                  const card = accounts.find(a => a.id === form.accountId && a.type === 'credit');
+                  const amt = parseFloat(form.amount);
+                  if (!card || !card.creditLimit || isNaN(amt) || amt <= 0) return null;
+                  const available = card.creditLimit - Math.abs(card.balance);
+                  if (amt <= available) return null;
+                  return (
+                    <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2.5">
+                      <Icons.AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="text-xs text-amber-700 dark:text-amber-400">
+                        <span className="font-semibold">Limite insuficiente.</span> Disponível: {formatCurrency(Math.max(0, available))} de {formatCurrency(card.creditLimit)}.
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <div className="space-y-2">
                 <Select
-                  label="Conta Bancária / Origem"
+                  label={form.type === 'income' ? 'Conta de Destino' : 'Conta / Origem do Pagamento'}
                   required
                   value={form.accountId}
                   onChange={e => setForm({ ...form, accountId: e.target.value })}
-                  options={accounts
-                    .filter(a => a.type !== 'credit')
-                    .map(a => ({ value: a.id, label: `${a.name} (Saldo: ${formatCurrency(getAccountBalance(a))})` }))
-                  }
+                  options={[
+                    { value: '', label: '— Selecione a conta —' },
+                    ...accounts
+                      .filter(a => a.type !== 'credit')
+                      .map(a => ({ value: a.id, label: `${a.name} (Saldo: ${formatCurrency(getAccountBalance(a))})` }))
+                  ]}
                 />
                 {accounts.filter(a => a.type !== 'credit').length === 0 && (
                   <p className="text-xs text-amber-600 font-medium">Você não possui contas bancárias cadastradas.</p>

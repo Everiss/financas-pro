@@ -41,6 +41,7 @@ import { GoalsSummary } from './components/dashboard/GoalsSummary';
 import { FluxoCaixaChart, GastosCategoriaChart } from './components/dashboard/Charts';
 import { RecentTransactions } from './components/dashboard/RecentTransactions';
 import { UpcomingReminders } from './components/dashboard/UpcomingReminders';
+import { OnboardingChecklist } from './components/dashboard/OnboardingChecklist';
 
 // Modals
 import { TransactionModal } from './components/modals/TransactionModal';
@@ -568,6 +569,17 @@ function AppInner() {
             <AnimatePresence mode="wait">
               {activeTab === 'dashboard' && (
                 <motion.div key="dashboard" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                  {/* Onboarding */}
+                  <OnboardingChecklist
+                    userId={user.uid}
+                    banks={banks}
+                    accounts={accounts}
+                    categories={categories}
+                    transactions={transactions}
+                    onNavigate={tab => setActiveTab(tab as any)}
+                    onAddTransaction={() => setIsAddModalOpen(true)}
+                  />
+
                   {/* Month selector */}
                   <div className="flex items-center justify-between bg-white/70 dark:bg-slate-900/70 rounded-2xl px-5 py-3 border border-blue-100/50 dark:border-slate-700/50 shadow-sm">
                     <h3 className="font-semibold text-blue-900 dark:text-slate-100 capitalize">

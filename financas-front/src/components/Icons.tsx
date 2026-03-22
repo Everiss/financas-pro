@@ -53,6 +53,8 @@ export const Icons = {
   Clock: Lucide.Clock,
   Bell: Lucide.Bell,
   Globe: Lucide.Globe,
+  ShoppingCart: Lucide.ShoppingCart,
+  Circle: Lucide.Circle,
 };
 
 export type IconName = keyof typeof Icons;

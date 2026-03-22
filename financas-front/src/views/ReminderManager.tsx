@@ -15,6 +15,8 @@ const PAGE_SIZE_REMINDERS = 8;
 export function ReminderManager({ reminders, categories, accounts, userId, onRefresh }: { reminders: Reminder[]; categories: Category[]; accounts: BankAccount[]; userId: string; onRefresh: () => Promise<void> }) {
   const [isAdding, setIsAdding] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [pickingAccountFor, setPickingAccountFor] = useState<string | null>(null);
+  const [pickedAccountId, setPickedAccountId] = useState('');
   const { confirm } = useConfirm();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -56,21 +58,31 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
     return r.amount;
   };
 
-  const handlePay = async (r: Reminder) => {
-    setPayingId(r.id);
+  const handlePay = async (r: Reminder, overrideAccountId?: string) => {
     const amount = effectiveAmount(r);
+    const resolvedAccountId = overrideAccountId || r.accountId;
+
+    // If amount > 0 and no account linked, show inline account picker
+    if (amount > 0 && !resolvedAccountId) {
+      setPickingAccountFor(r.id);
+      setPickedAccountId('');
+      return;
+    }
+
+    setPayingId(r.id);
+    setPickingAccountFor(null);
     try {
       // Only create a transaction if there's an actual amount
       if (amount > 0) {
-        const account = r.accountId ? accounts.find(a => a.id === r.accountId) : undefined;
+        const account = resolvedAccountId ? accounts.find(a => a.id === resolvedAccountId) : undefined;
         await transactionsApi.create({
           amount,
           type: r.type,
           categoryId: r.category || undefined,
           date: new Date().toISOString().split('T')[0],
           description: r.title,
-          accountId: r.accountId,
-          paymentMethod: account ? (account.type === 'credit' ? 'credit' : 'debit') : undefined,
+          accountId: resolvedAccountId!,
+          paymentMethod: account ? (account.type === 'credit' ? 'credit' : 'debit') : 'debit',
         });
       }
 
@@ -106,51 +118,88 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
 
   const ReminderRow = ({ r }: { r: Reminder }) => {
     const isPaying = payingId === r.id;
+    const isPickingAccount = pickingAccountFor === r.id;
     const isOverdueRow = r.dueDate.toDate() < now;
     const amount = effectiveAmount(r);
-    const isInformational = amount === 0; // closing day reminders or zero-balance cards
+    const isInformational = amount === 0;
+    const nonCreditAccounts = accounts.filter(a => a.type !== 'credit');
     return (
-      <tr className="hover:bg-blue-50/80 dark:hover:bg-slate-800/50 transition-colors group">
-        <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
-          <span className={cn(isOverdueRow ? 'text-red-500 font-semibold' : 'text-blue-500 dark:text-slate-400')}>
-            {formatDate(r.dueDate.toDate())}
-          </span>
-        </td>
-        <td className="px-6 py-4">
-          <p className="text-sm font-semibold text-blue-800 dark:text-slate-200">{r.title}</p>
-          {r.notes && <p className="text-xs text-blue-400 dark:text-slate-500 italic mt-0.5 truncate max-w-[200px]">{r.notes}</p>}
-        </td>
-        <td className="px-6 py-4 text-sm font-medium text-blue-500 dark:text-slate-400">
-          {frequencyLabel(r.frequency)}
-        </td>
-        <td className={cn('px-6 py-4 text-sm font-bold text-right whitespace-nowrap tracking-tight', r.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
-          {isInformational ? <span className="text-blue-400 dark:text-slate-500 text-xs font-medium">Aviso</span> : <>{r.type === 'income' ? '+' : '−'} {formatCurrency(amount)}</>}
-        </td>
-        <td className="px-6 py-4 text-right">
-          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-            <button
-              onClick={() => handlePay(r)}
-              disabled={isPaying}
-              className={cn(
-                'px-3 py-1.5 text-xs font-bold rounded-xl transition-all disabled:opacity-50',
-                isInformational
-                  ? 'bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-slate-300 hover:bg-blue-200 dark:hover:bg-slate-600'
-                  : r.type === 'income'
-                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200'
-                    : 'bg-blue-900 text-white hover:bg-blue-800'
-              )}
-            >
-              {isPaying ? '...' : isInformational ? 'Concluir' : r.type === 'income' ? 'Receber' : 'Pagar'}
-            </button>
-            <button
-              onClick={() => handleDelete(r)}
-              className="p-1.5 text-blue-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors"
-            >
-              <Icons.Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </td>
-      </tr>
+      <>
+        <tr className="hover:bg-blue-50/80 dark:hover:bg-slate-800/50 transition-colors group">
+          <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
+            <span className={cn(isOverdueRow ? 'text-red-500 font-semibold' : 'text-blue-500 dark:text-slate-400')}>
+              {formatDate(r.dueDate.toDate())}
+            </span>
+          </td>
+          <td className="px-6 py-4">
+            <p className="text-sm font-semibold text-blue-800 dark:text-slate-200">{r.title}</p>
+            {r.notes && <p className="text-xs text-blue-400 dark:text-slate-500 italic mt-0.5 truncate max-w-[200px]">{r.notes}</p>}
+          </td>
+          <td className="px-6 py-4 text-sm font-medium text-blue-500 dark:text-slate-400">
+            {frequencyLabel(r.frequency)}
+          </td>
+          <td className={cn('px-6 py-4 text-sm font-bold text-right whitespace-nowrap tracking-tight', r.type === 'income' ? 'text-emerald-600' : 'text-blue-900 dark:text-slate-100')}>
+            {isInformational ? <span className="text-blue-400 dark:text-slate-500 text-xs font-medium">Aviso</span> : <>{r.type === 'income' ? '+' : '−'} {formatCurrency(amount)}</>}
+          </td>
+          <td className="px-6 py-4 text-right">
+            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+              <button
+                onClick={() => handlePay(r)}
+                disabled={isPaying}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-bold rounded-xl transition-all disabled:opacity-50',
+                  isInformational
+                    ? 'bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-slate-300 hover:bg-blue-200 dark:hover:bg-slate-600'
+                    : r.type === 'income'
+                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200'
+                      : 'bg-blue-900 text-white hover:bg-blue-800'
+                )}
+              >
+                {isPaying ? '...' : isInformational ? 'Concluir' : r.type === 'income' ? 'Receber' : 'Pagar'}
+              </button>
+              <button
+                onClick={() => handleDelete(r)}
+                className="p-1.5 text-blue-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors"
+              >
+                <Icons.Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </td>
+        </tr>
+        {isPickingAccount && (
+          <tr className="bg-amber-50/70 dark:bg-amber-950/20">
+            <td colSpan={5} className="px-6 py-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Icons.AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Selecione a conta para registrar este pagamento:</span>
+                <select
+                  value={pickedAccountId}
+                  onChange={e => setPickedAccountId(e.target.value)}
+                  className="text-xs px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-blue-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="">— Selecione —</option>
+                  {nonCreditAccounts.map(a => (
+                    <option key={a.id} value={a.id}>{a.name} ({formatCurrency(a.balance)})</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => { if (pickedAccountId) handlePay(r, pickedAccountId); }}
+                  disabled={!pickedAccountId}
+                  className="text-xs font-bold px-3 py-1.5 bg-blue-900 text-white rounded-xl hover:bg-blue-800 disabled:opacity-40 transition-colors"
+                >
+                  Confirmar
+                </button>
+                <button
+                  onClick={() => setPickingAccountFor(null)}
+                  className="text-xs text-blue-400 dark:text-slate-500 hover:text-blue-700 px-2 py-1.5"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </td>
+          </tr>
+        )}
+      </>
     );
   };
 
