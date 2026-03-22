@@ -680,7 +680,12 @@ function AppInner() {
 
               {activeTab === 'investments' && (
                 <motion.div key="investments" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                  <InvestmentsView accounts={accounts} transactions={transactions} />
+                  <InvestmentsView
+                    accounts={accounts}
+                    transactions={transactions}
+                    onAporte={(accId) => setTransferenciaModal({ open: true, prefillToId: accId })}
+                    onAddTransaction={() => setIsAddModalOpen(true)}
+                  />
                 </motion.div>
               )}
 
