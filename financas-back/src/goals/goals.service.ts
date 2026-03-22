@@ -56,13 +56,49 @@ export class GoalsService {
   }
 
   async deposit(id: string, userId: string, dto: DepositGoalDto) {
-    await this.findOne(id, userId);
-    const goal = await this.prisma.goal.update({
-      where: { id },
-      data: { currentAmount: { increment: dto.amount } },
+    const goal = await this.findOne(id, userId);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Incrementa o valor atual da meta
+      const updated = await tx.goal.update({
+        where: { id },
+        data: { currentAmount: { increment: dto.amount } },
+      });
+
+      // Se informou uma conta, debita o valor dela
+      if (dto.accountId) {
+        const account = await tx.bankAccount.findUnique({
+          where: { id: dto.accountId },
+          select: { type: true, userId: true },
+        });
+        if (!account || account.userId !== userId) {
+          throw new Error('Conta não encontrada.');
+        }
+
+        // Cria uma transação de despesa na conta
+        await tx.transaction.create({
+          data: {
+            amount: dto.amount,
+            type: 'expense',
+            date: new Date(),
+            description: `Depósito em meta: ${goal.name}`,
+            accountId: dto.accountId,
+            isTransfer: false,
+            userId,
+          },
+        });
+
+        // Debita da conta
+        const delta = account.type === 'credit' ? dto.amount : -dto.amount;
+        await tx.bankAccount.update({
+          where: { id: dto.accountId },
+          data: { balance: { increment: delta } },
+        });
+      }
+
+      await this.aiCache.invalidate(userId);
+      return updated;
     });
-    await this.aiCache.invalidate(userId);
-    return goal;
   }
 
   async remove(id: string, userId: string) {

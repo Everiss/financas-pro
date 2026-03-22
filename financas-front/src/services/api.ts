@@ -104,10 +104,42 @@ export const goalsApi = {
     request<GoalResponse>('/goals', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: Partial<CreateGoalPayload>) =>
     request<GoalResponse>(`/goals/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  deposit: (id: string, amount: number) =>
-    request<GoalResponse>(`/goals/${id}/deposit`, { method: 'POST', body: JSON.stringify({ amount }) }),
+  deposit: (id: string, data: { amount: number; accountId?: string }) =>
+    request<GoalResponse>(`/goals/${id}/deposit`, { method: 'POST', body: JSON.stringify(data) }),
   delete: (id: string) =>
     request<void>(`/goals/${id}`, { method: 'DELETE' }),
+};
+
+// --- Transfers ---
+
+export interface CreateTransferPayload {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  date: string;
+  description?: string;
+  isBillPayment?: boolean;
+}
+
+export interface TransferResponse {
+  id: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amount: string;
+  date: string;
+  description?: string;
+  isBillPayment: boolean;
+  fromTxId: string;
+  toTxId: string;
+  createdAt: string;
+}
+
+export const transfersApi = {
+  getAll: () => request<TransferResponse[]>('/transfers'),
+  create: (data: CreateTransferPayload) =>
+    request<TransferResponse>('/transfers', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    request<void>(`/transfers/${id}`, { method: 'DELETE' }),
 };
 
 // --- Reminders ---

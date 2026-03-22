@@ -15,6 +15,7 @@ import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
 import { OpenFinanceModule } from './openfinance/openfinance.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { TransfersModule } from './transfers/transfers.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
     AuditModule,
     OpenFinanceModule,
     SubscriptionModule,
+    TransfersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

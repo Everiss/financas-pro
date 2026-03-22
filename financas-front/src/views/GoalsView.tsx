@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { cn, formatCurrency, formatDate } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Icons, IconName } from '../components/Icons';
-import { Button, Card } from '../components/ui';
+import { Button, Card, Input, Select } from '../components/ui';
 import { goalsApi, AiGoalsStrategy } from '../services/api';
 import { Goal, Transaction, BankAccount, Category } from '../types';
 import { PlanGate } from '../components/PlanGate';
@@ -10,10 +10,37 @@ import { GoalModal } from '../components/modals/GoalModal';
 import { getGoalInsights } from '../services/aiService';
 import { useConfirm } from '../contexts/ConfirmContext';
 
-export function GoalItem({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () => void; onDelete: () => void; key?: string }) {
+export function GoalItem({ goal, accounts, onEdit, onDelete, onRefresh }: { goal: Goal; accounts: BankAccount[]; onEdit: () => void; onDelete: () => void; onRefresh: () => Promise<void>; key?: string }) {
   const percentage = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
   const Icon = Icons[goal.icon as IconName] || Icons.Target;
   const isCompleted = goal.currentAmount >= goal.targetAmount;
+
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [depositAmt, setDepositAmt] = useState('');
+  const [depositAccId, setDepositAccId] = useState('');
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [depositError, setDepositError] = useState<string | null>(null);
+
+  const nonCreditAccounts = accounts.filter(a => a.type !== 'credit');
+
+  const handleDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(depositAmt);
+    if (isNaN(amt) || amt <= 0) { setDepositError('Informe um valor válido.'); return; }
+    setDepositLoading(true);
+    setDepositError(null);
+    try {
+      await goalsApi.deposit(goal.id, { amount: amt, accountId: depositAccId || undefined });
+      await onRefresh();
+      setShowDeposit(false);
+      setDepositAmt('');
+      setDepositAccId('');
+    } catch (err: any) {
+      setDepositError(err?.message ?? 'Erro ao depositar.');
+    } finally {
+      setDepositLoading(false);
+    }
+  };
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden border-none shadow-sm">
@@ -56,18 +83,78 @@ export function GoalItem({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () =>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-blue-50">
+        <div className="flex items-center justify-between pt-2 border-t border-blue-50 dark:border-slate-700">
           <div className="flex items-center gap-2 text-xs font-medium text-blue-500">
             <Icons.Calendar className="w-3.5 h-3.5" />
             {goal.deadline ? formatDate(goal.deadline.toDate()) : 'Sem prazo'}
           </div>
-          {isCompleted && (
-            <div className="flex items-center gap-1 text-emerald-600 text-xs font-bold uppercase tracking-widest">
-              <Icons.CheckCircle className="w-4 h-4" />
-              Concluído
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {isCompleted && (
+              <div className="flex items-center gap-1 text-emerald-600 text-xs font-bold uppercase tracking-widest">
+                <Icons.CheckCircle className="w-4 h-4" />
+                Concluído
+              </div>
+            )}
+            {!isCompleted && (
+              <button
+                onClick={() => setShowDeposit(v => !v)}
+                className="flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-800"
+              >
+                <Icons.Plus className="w-3.5 h-3.5" />
+                Depositar
+              </button>
+            )}
+          </div>
         </div>
+
+        <AnimatePresence>
+          {showDeposit && (
+            <motion.form
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              onSubmit={handleDeposit}
+              noValidate
+              className="pt-2 border-t border-blue-50 dark:border-slate-700 space-y-3 overflow-hidden"
+            >
+              <p className="text-xs font-semibold text-blue-700 dark:text-slate-300 uppercase tracking-wider">Depositar na meta</p>
+              <Input
+                label="Valor do depósito"
+                type="number"
+                step="0.01"
+                placeholder="0,00"
+                required
+                value={depositAmt}
+                onChange={e => setDepositAmt(e.target.value)}
+              />
+              {nonCreditAccounts.length > 0 && (
+                <Select
+                  label="Debitar da conta (opcional)"
+                  value={depositAccId}
+                  onChange={e => setDepositAccId(e.target.value)}
+                  options={[
+                    { value: '', label: '— Não debitar nenhuma conta —' },
+                    ...nonCreditAccounts.map(a => ({
+                      value: a.id,
+                      label: `${a.name} (${formatCurrency(a.balance)})`,
+                    })),
+                  ]}
+                />
+              )}
+              {depositError && (
+                <p className="text-xs text-red-500 font-medium">{depositError}</p>
+              )}
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" className="flex-1 text-xs py-2" onClick={() => { setShowDeposit(false); setDepositError(null); }}>
+                  Cancelar
+                </Button>
+                <Button type="submit" className="flex-1 text-xs py-2" disabled={depositLoading}>
+                  {depositLoading ? 'Salvando...' : 'Confirmar'}
+                </Button>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
       </div>
     </Card>
   );
@@ -236,7 +323,14 @@ export function GoalsView({ goals, userId, transactions, accounts, categories, o
           </div>
         ) : (
           goals.map(goal => (
-            <GoalItem key={goal.id} goal={goal} onEdit={() => handleEdit(goal)} onDelete={() => handleDelete(goal)} />
+            <GoalItem
+              key={goal.id}
+              goal={goal}
+              accounts={accounts}
+              onEdit={() => handleEdit(goal)}
+              onDelete={() => handleDelete(goal)}
+              onRefresh={onRefresh}
+            />
           ))
         )}
       </div>
