@@ -76,10 +76,10 @@ export class TransactionsService {
     return this.prisma.$transaction(async (tx) => {
       const transaction = await tx.transaction.create({
         data: {
-          ...dto,
+          ...(dto as any),
           date: new Date(dto.date),
           userId,
-        },
+        } as any,
         include: { category: true, account: true },
       });
 
@@ -125,7 +125,7 @@ export class TransactionsService {
           isPending: true,
           installmentRef: ref,
           userId,
-        },
+        } as any,
         include: { category: true, account: true },
       });
       created.push(tx);
@@ -138,12 +138,12 @@ export class TransactionsService {
   /** Confirms a pending transaction: sets isPending=false and applies balance delta */
   async confirm(id: string, userId: string) {
     const existing = await this.findOne(id, userId);
-    if (!existing.isPending) return existing; // already confirmed
+    if (!(existing as any).isPending) return existing; // already confirmed
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.transaction.update({
         where: { id },
-        data: { isPending: false },
+        data: { isPending: false } as any,
         include: { category: true, account: true },
       });
 
@@ -225,7 +225,7 @@ export class TransactionsService {
       await tx.transaction.delete({ where: { id } });
 
       // Pending transactions never touched balance — nothing to revert
-      if (!existing.isPending && existing.accountId && existing.account) {
+      if (!(existing as any).isPending && existing.accountId && existing.account) {
         const revertDelta = balanceDelta(
           existing.type,
           Number(existing.amount),

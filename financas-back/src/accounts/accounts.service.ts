@@ -30,16 +30,24 @@ export class AccountsService {
   }
 
   async create(userId: string, dto: CreateAccountDto) {
-    const account = await this.prisma.bankAccount.create({ data: { ...dto, userId } });
+    const { currency, ...rest } = dto as any;
+    const account = await this.prisma.bankAccount.create({ data: { ...rest, userId } });
+    if (currency) {
+      await this.prisma.$executeRaw`UPDATE bank_accounts SET currency = ${currency} WHERE id = ${account.id}`;
+    }
     await this.aiCache.invalidate(userId);
-    return account;
+    return this.findOne(account.id, userId);
   }
 
   async update(id: string, userId: string, dto: UpdateAccountDto) {
     await this.findOne(id, userId);
-    const account = await this.prisma.bankAccount.update({ where: { id }, data: dto });
+    const { currency, ...rest } = dto as any;
+    await this.prisma.bankAccount.update({ where: { id }, data: rest });
+    if (currency) {
+      await this.prisma.$executeRaw`UPDATE bank_accounts SET currency = ${currency} WHERE id = ${id}`;
+    }
     await this.aiCache.invalidate(userId);
-    return account;
+    return this.findOne(id, userId);
   }
 
   async remove(id: string, userId: string) {

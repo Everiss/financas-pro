@@ -57,6 +57,8 @@ export const Icons = {
   Circle: Lucide.Circle,
   HandCoins: Lucide.HandCoins,
   Receipt: Lucide.Receipt,
+  Menu: Lucide.Menu,
+  ChevronUp: Lucide.ChevronUp,
 };
 
 export type IconName = keyof typeof Icons;

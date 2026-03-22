@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { cn, formatCurrency } from '../../lib/utils';
 import { AnimatePresence, motion } from 'motion/react';
 import { Icons } from '../Icons';
@@ -62,42 +62,196 @@ const MODE_OPTIONS: { value: TxMode; label: string; icon: keyof typeof Icons; co
 
 // ─── ProductSelect ─────────────────────────────────────────────────────────────
 
+const ACCOUNT_TYPE_COLORS: Record<string, string> = {
+  checking:   'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
+  savings:    'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
+  investment: 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300',
+  credit:     'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+  loan:       'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300',
+  financing:  'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300',
+};
+
+function ProductCard({ acc, compact = false }: { acc: BankAccount; compact?: boolean }) {
+  const cur = acc.currency ?? 'BRL';
+  const fxMeta = cur !== 'BRL' ? CURRENCIES.find(c => c.code === cur) : null;
+  const isDebt = DEBT_TYPES.includes(acc.type);
+  const isCredit = acc.type === 'credit';
+  const balance = isDebt ? acc.balance : isCredit ? Math.abs(acc.balance) : acc.balance;
+  const typeLabel = TYPE_LABELS[acc.type] ?? acc.type;
+  const subtypeLabel = acc.subtype ? SUBTYPE_LABELS[acc.subtype] : null;
+  const typeColor = ACCOUNT_TYPE_COLORS[acc.type] ?? 'bg-slate-100 text-slate-700';
+  const balColor = isDebt ? 'text-rose-600 dark:text-rose-400' : isCredit ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+
+  return (
+    <div className={cn('flex items-center gap-2.5 w-full', compact ? '' : '')}>
+      {/* Bank color dot */}
+      <div
+        className="w-2.5 h-2.5 rounded-full shrink-0"
+        style={{ backgroundColor: acc.bank?.color ?? '#3b82f6' }}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="font-semibold text-blue-900 dark:text-slate-100 text-sm truncate">{acc.name}</span>
+          <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0', typeColor)}>{typeLabel}</span>
+          {subtypeLabel && (
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 shrink-0">{subtypeLabel}</span>
+          )}
+        </div>
+        {!compact && acc.bank?.name && (
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{acc.bank.name}</p>
+        )}
+      </div>
+      <div className="text-right shrink-0">
+        {fxMeta && (
+          <div className="text-[10px] text-sky-500 dark:text-sky-400 font-semibold">{fxMeta.flag} {cur}</div>
+        )}
+        <div className={cn('text-xs font-bold', balColor)}>
+          {isDebt ? 'Dev: ' : isCredit ? 'Fat: ' : ''}{formatCurrency(balance, cur)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProductSelect({
   label, value, onChange, options, required, hint,
 }: {
   label: string; value: string; onChange: (id: string) => void;
   options: BankAccount[]; required?: boolean; hint?: string;
 }) {
-  // Group by bank
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const selected = options.find(a => a.id === value);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Focus search when opened
+  useEffect(() => {
+    if (open) setTimeout(() => searchRef.current?.focus(), 50);
+  }, [open]);
+
+  // Filter + group
+  const q = search.toLowerCase();
+  const filtered = options.filter(a => {
+    if (!q) return true;
+    const bankName = a.bank?.name?.toLowerCase() ?? '';
+    const name = a.name.toLowerCase();
+    const type = (TYPE_LABELS[a.type] ?? a.type).toLowerCase();
+    return bankName.includes(q) || name.includes(q) || type.includes(q);
+  });
   const grouped: Record<string, BankAccount[]> = {};
-  for (const acc of options) {
+  for (const acc of filtered) {
     const key = acc.bank?.name ?? 'Sem banco';
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(acc);
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5" ref={containerRef}>
       <label className="text-xs font-semibold text-blue-500 dark:text-slate-400 uppercase tracking-wider">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
-      <select
-        required={required}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full rounded-xl border border-blue-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-blue-900 dark:text-slate-100 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-600 transition-colors"
+
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => { setOpen(o => !o); setSearch(''); }}
+        className={cn(
+          'w-full flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-all',
+          open
+            ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800 bg-white dark:bg-slate-800'
+            : 'border-blue-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-slate-500',
+        )}
       >
-        <option value="">— Selecione o produto —</option>
-        {Object.entries(grouped).map(([bankName, accs]) => (
-          <optgroup key={bankName} label={bankName}>
-            {accs.map(acc => (
-              <option key={acc.id} value={acc.id}>
-                {productLabel(acc)}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+        {selected ? (
+          <div className="flex-1 min-w-0"><ProductCard acc={selected} compact /></div>
+        ) : (
+          <span className="flex-1 text-sm text-slate-400 dark:text-slate-500">— Selecione o produto —</span>
+        )}
+        <Icons.ChevronDown className={cn('w-4 h-4 text-blue-400 shrink-0 transition-transform', open ? 'rotate-180' : '')} />
+      </button>
+
+      {/* Dropdown panel */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scaleY: 0.95 }}
+            animate={{ opacity: 1, y: 0, scaleY: 1 }}
+            exit={{ opacity: 0, y: -6, scaleY: 0.95 }}
+            transition={{ duration: 0.13 }}
+            style={{ transformOrigin: 'top' }}
+            className="z-10 w-full rounded-xl border border-blue-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xl overflow-hidden"
+          >
+            {/* Search */}
+            <div className="p-2 border-b border-blue-100 dark:border-slate-700">
+              <div className="flex items-center gap-2 bg-blue-50 dark:bg-slate-700 rounded-lg px-2.5 py-1.5">
+                <Icons.Search className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <input
+                  ref={searchRef}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Buscar produto..."
+                  className="flex-1 bg-transparent text-sm text-blue-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none"
+                />
+                {search && (
+                  <button type="button" onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600">
+                    <Icons.X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Items */}
+            <div className="overflow-y-auto max-h-56">
+              {Object.keys(grouped).length === 0 ? (
+                <p className="text-center text-xs text-slate-400 py-4">Nenhum produto encontrado</p>
+              ) : (
+                Object.entries(grouped).map(([bankName, accs]) => (
+                  <div key={bankName}>
+                    {/* Bank header */}
+                    <div className="px-3 py-1.5 flex items-center gap-2 bg-blue-50/60 dark:bg-slate-700/50 sticky top-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 dark:text-slate-400">{bankName}</span>
+                      <div className="flex-1 h-px bg-blue-100 dark:bg-slate-600" />
+                    </div>
+                    {/* Product rows */}
+                    {accs.map(acc => (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => { onChange(acc.id); setOpen(false); setSearch(''); }}
+                        className={cn(
+                          'w-full px-3 py-2.5 flex items-center text-left transition-colors hover:bg-blue-50 dark:hover:bg-slate-700/60',
+                          acc.id === value ? 'bg-blue-50 dark:bg-slate-700/40' : '',
+                        )}
+                      >
+                        <ProductCard acc={acc} />
+                        {acc.id === value && (
+                          <Icons.Check className="w-4 h-4 text-blue-500 shrink-0 ml-1" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {hint && <p className="text-xs text-blue-400 dark:text-slate-500">{hint}</p>}
     </div>
   );
