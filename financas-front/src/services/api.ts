@@ -283,6 +283,20 @@ export const auditApi = {
   },
 };
 
+export interface AppNotification {
+  id: string;
+  type: 'reminder_overdue' | 'reminder_due' | 'budget_exceeded' | 'goal_reached' | 'debt_due';
+  severity: 'danger' | 'warning' | 'info' | 'success';
+  title: string;
+  description: string;
+  tab?: string;
+  amount?: number;
+}
+
+export const notificationsApi = {
+  getAll: () => request<AppNotification[]>('/notifications'),
+};
+
 export interface AuditLogResponse {
   id: string;
   userId: string;

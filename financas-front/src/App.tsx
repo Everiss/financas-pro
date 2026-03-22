@@ -60,6 +60,7 @@ import { PlanosView } from './views/PlanosView';
 import { AuditLogView } from './views/AuditLogView';
 import { FaturaView } from './views/FaturaView';
 import { AnalyticsView } from './views/AnalyticsView';
+import { NotificationCenter } from './components/NotificationCenter';
 
 // --- API → Frontend type adapters ---
 
@@ -519,7 +520,7 @@ function AppInner() {
                   {activeTab === 'categories' && 'Categorias'}
                   {activeTab === 'calendar' && 'Calendário Financeiro'}
                   {activeTab === 'reminders' && 'Lembretes'}
-                  {activeTab === 'accounts' && 'Minhas Contas'}
+                  {activeTab === 'accounts' && 'Meus Produtos'}
                   {activeTab === 'goals' && 'Minhas Metas'}
                   {activeTab === 'audit' && 'Histórico de Operações'}
                   {activeTab === 'openfinance' && 'Open Finance'}
@@ -534,7 +535,7 @@ function AppInner() {
                   {activeTab === 'categories' && 'Organize seus gastos por categorias.'}
                   {activeTab === 'calendar' && 'Visualize seus vencimentos e períodos críticos.'}
                   {activeTab === 'reminders' && 'Gerencie pagamentos recorrentes e futuros.'}
-                  {activeTab === 'accounts' && 'Gerencie suas contas bancárias e cartões.'}
+                  {activeTab === 'accounts' && 'Gerencie contas, cartões, empréstimos e financiamentos.'}
                   {activeTab === 'goals' && 'Planeje e acompanhe seus sonhos financeiros.'}
                   {activeTab === 'audit' && 'Rastreabilidade de todas as operações realizadas.'}
                   {activeTab === 'openfinance' && 'Conecte suas contas bancárias reais via Open Finance Brasil.'}
@@ -543,6 +544,7 @@ function AppInner() {
                 </p>
               </div>
               <div className="flex items-center gap-3 self-end sm:self-auto">
+                <NotificationCenter onNavigate={(tab) => setActiveTab(tab as any)} />
                 <button
                   onClick={() => setDarkMode(!darkMode)}
                   className="md:hidden flex items-center justify-center w-10 h-10 rounded-full border border-blue-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors text-blue-500 dark:text-slate-400"
