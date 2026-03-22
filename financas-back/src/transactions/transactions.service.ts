@@ -5,6 +5,18 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { QueryTransactionDto } from './dto/query-transaction.dto';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
+
+export interface CreateInstallmentsDto {
+  amount: number;
+  installments: number;
+  accountId: string;
+  categoryId?: string;
+  description: string;
+  date: string;
+  type: 'income' | 'expense';
+  paymentMethod?: 'debit' | 'credit';
+}
 
 /** Calcula o delta a aplicar no balance da conta.
  * - Contas normais (checking/savings/investment): income → +, expense → −
@@ -71,7 +83,8 @@ export class TransactionsService {
         include: { category: true, account: true },
       });
 
-      if (dto.accountId) {
+      // Pending transactions do NOT affect balance until confirmed
+      if (!dto.isPending && dto.accountId) {
         const account = await tx.bankAccount.findUnique({
           where: { id: dto.accountId },
           select: { type: true },
@@ -87,6 +100,69 @@ export class TransactionsService {
 
       await this.aiCache.invalidate(userId);
       return transaction;
+    });
+  }
+
+  /** Creates N installment transactions, all pending, with monthly dates */
+  async createInstallments(userId: string, dto: CreateInstallmentsDto) {
+    const ref = randomUUID();
+    const installmentAmount = Math.round((dto.amount / dto.installments) * 100) / 100;
+    const baseDate = new Date(dto.date);
+
+    const created: any[] = [];
+    for (let i = 0; i < dto.installments; i++) {
+      const d = new Date(baseDate);
+      d.setMonth(d.getMonth() + i);
+      const tx = await this.prisma.transaction.create({
+        data: {
+          amount: installmentAmount,
+          type: dto.type as any,
+          date: d,
+          description: `${dto.description} (${i + 1}/${dto.installments})`,
+          accountId: dto.accountId,
+          categoryId: dto.categoryId,
+          paymentMethod: dto.paymentMethod as any,
+          isPending: true,
+          installmentRef: ref,
+          userId,
+        },
+        include: { category: true, account: true },
+      });
+      created.push(tx);
+    }
+
+    await this.aiCache.invalidate(userId);
+    return { ref, count: created.length, transactions: created };
+  }
+
+  /** Confirms a pending transaction: sets isPending=false and applies balance delta */
+  async confirm(id: string, userId: string) {
+    const existing = await this.findOne(id, userId);
+    if (!existing.isPending) return existing; // already confirmed
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.transaction.update({
+        where: { id },
+        data: { isPending: false },
+        include: { category: true, account: true },
+      });
+
+      if (existing.accountId) {
+        const account = await tx.bankAccount.findUnique({
+          where: { id: existing.accountId },
+          select: { type: true },
+        });
+        if (account) {
+          const delta = balanceDelta(existing.type, Number(existing.amount), account.type);
+          await tx.bankAccount.update({
+            where: { id: existing.accountId },
+            data: { balance: { increment: delta } },
+          });
+        }
+      }
+
+      await this.aiCache.invalidate(userId);
+      return updated;
     });
   }
 
@@ -148,7 +224,8 @@ export class TransactionsService {
     return this.prisma.$transaction(async (tx) => {
       await tx.transaction.delete({ where: { id } });
 
-      if (existing.accountId && existing.account) {
+      // Pending transactions never touched balance — nothing to revert
+      if (!existing.isPending && existing.accountId && existing.account) {
         const revertDelta = balanceDelta(
           existing.type,
           Number(existing.amount),

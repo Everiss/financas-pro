@@ -10,6 +10,8 @@ export interface Transaction {
   accountId?: string;
   paymentMethod?: 'debit' | 'credit';
   isTransfer?: boolean;
+  isPending?: boolean;
+  installmentRef?: string;
   userId: string;
 }
 

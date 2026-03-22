@@ -184,6 +184,15 @@ export function TransactionModal({
     fromId: '', toId: '', amount: '', date: new Date().toISOString().split('T')[0], description: '',
   });
 
+  // ── Installments ─────────────────────────────────────────────────────────────
+  const [installments, setInstallments] = useState({ enabled: false, count: 2 });
+
+  // ── Scheduling (isPending) ────────────────────────────────────────────────────
+  const [isPending, setIsPending] = useState(() => {
+    if (editTransaction) return editTransaction.isPending ?? false;
+    return false;
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -240,6 +249,7 @@ export function TransactionModal({
     setMode(m);
     setForm(f => ({ ...f, accountId: '', category: '' }));
     setTransfer(t => ({ ...t, fromId: '', toId: '' }));
+    setInstallments({ enabled: false, count: 2 });
     setError(null);
   };
 
@@ -285,21 +295,36 @@ export function TransactionModal({
     setLoading(true);
     try {
       const selectedAcc = accounts.find(a => a.id === form.accountId);
-      const data: CreateTransactionPayload = {
-        amount,
-        type: mode as 'income' | 'expense',
-        categoryId: form.category,
-        date: form.date,
-        description: form.description || undefined,
-        accountId: form.accountId,
-      };
-      if (mode === 'expense') {
-        data.paymentMethod = selectedAcc?.type === 'credit' ? 'credit' : 'debit';
-      }
-      if (isEditing && editTransaction) {
-        await transactionsApi.update(editTransaction.id, data);
+      const paymentMethod = mode === 'expense' ? (selectedAcc?.type === 'credit' ? 'credit' : 'debit') : undefined;
+
+      // Installments path
+      if (installments.enabled && installments.count >= 2) {
+        await transactionsApi.createInstallments({
+          amount,
+          installments: installments.count,
+          accountId: form.accountId,
+          categoryId: form.category,
+          description: form.description || 'Compra parcelada',
+          date: form.date,
+          type: mode as 'income' | 'expense',
+          paymentMethod,
+        });
       } else {
-        await transactionsApi.create(data);
+        const data: CreateTransactionPayload = {
+          amount,
+          type: mode as 'income' | 'expense',
+          categoryId: form.category,
+          date: form.date,
+          description: form.description || undefined,
+          accountId: form.accountId,
+          paymentMethod,
+          isPending,
+        };
+        if (isEditing && editTransaction) {
+          await transactionsApi.update(editTransaction.id, data);
+        } else {
+          await transactionsApi.create(data);
+        }
       }
       await onRefresh();
       onClose();
@@ -522,6 +547,114 @@ export function TransactionModal({
                           value={form.description}
                           onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                         />
+
+                        {/* ── Installments ─────────────────────────── */}
+                        {!isEditing && (
+                          <div className="space-y-3 pt-1 border-t border-blue-100 dark:border-slate-700">
+                            <button
+                              type="button"
+                              onClick={() => setInstallments(s => ({ ...s, enabled: !s.enabled, count: s.count || 2 }))}
+                              className={cn(
+                                'w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all',
+                                installments.enabled
+                                  ? 'border-violet-400 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300'
+                                  : 'border-blue-100 dark:border-slate-700 text-blue-400 dark:text-slate-500 hover:border-blue-300',
+                              )}
+                            >
+                              <span className="flex items-center gap-2">
+                                <Icons.CreditCard className="w-4 h-4" />
+                                Parcelar compra
+                              </span>
+                              <span className={cn(
+                                'text-xs px-2 py-0.5 rounded-full font-bold',
+                                installments.enabled
+                                  ? 'bg-violet-200 dark:bg-violet-800 text-violet-700 dark:text-violet-300'
+                                  : 'bg-blue-100 dark:bg-slate-700 text-blue-400 dark:text-slate-500',
+                              )}>
+                                {installments.enabled ? `${installments.count}x` : 'Desativado'}
+                              </span>
+                            </button>
+
+                            <AnimatePresence>
+                              {installments.enabled && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.15 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="space-y-3 p-4 rounded-xl bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800">
+                                    <div className="flex items-center gap-3">
+                                      <label className="text-xs font-semibold text-violet-700 dark:text-violet-400 whitespace-nowrap">Nº de parcelas</label>
+                                      <div className="flex items-center gap-2">
+                                        <button type="button" onClick={() => setInstallments(s => ({ ...s, count: Math.max(2, s.count - 1) }))}
+                                          className="w-7 h-7 rounded-lg bg-violet-200 dark:bg-violet-800 text-violet-700 dark:text-violet-300 font-bold hover:bg-violet-300 dark:hover:bg-violet-700 transition-colors flex items-center justify-center">−</button>
+                                        <span className="text-lg font-bold text-violet-700 dark:text-violet-300 w-8 text-center">{installments.count}</span>
+                                        <button type="button" onClick={() => setInstallments(s => ({ ...s, count: Math.min(48, s.count + 1) }))}
+                                          className="w-7 h-7 rounded-lg bg-violet-200 dark:bg-violet-800 text-violet-700 dark:text-violet-300 font-bold hover:bg-violet-300 dark:hover:bg-violet-700 transition-colors flex items-center justify-center">+</button>
+                                      </div>
+                                      <span className="text-xs text-violet-500 dark:text-violet-400">parcelas mensais</span>
+                                    </div>
+                                    {form.amount && !isNaN(parseFloat(form.amount)) && parseFloat(form.amount) > 0 && (
+                                      <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="bg-white/70 dark:bg-slate-800/70 rounded-lg p-2">
+                                          <p className="text-[10px] text-violet-500 dark:text-violet-400 font-medium">Total</p>
+                                          <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(parseFloat(form.amount))}</p>
+                                        </div>
+                                        <div className="bg-white/70 dark:bg-slate-800/70 rounded-lg p-2">
+                                          <p className="text-[10px] text-violet-500 dark:text-violet-400 font-medium">Por parcela</p>
+                                          <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{formatCurrency(Math.round((parseFloat(form.amount) / installments.count) * 100) / 100)}</p>
+                                        </div>
+                                        <div className="bg-white/70 dark:bg-slate-800/70 rounded-lg p-2">
+                                          <p className="text-[10px] text-violet-500 dark:text-violet-400 font-medium">Último venc.</p>
+                                          <p className="text-sm font-bold text-violet-700 dark:text-violet-300">
+                                            {(() => { const d = new Date(form.date); d.setMonth(d.getMonth() + installments.count - 1); return d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }); })()}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                    <p className="text-[11px] text-violet-500 dark:text-violet-400">
+                                      Serão criados {installments.count} lançamentos pendentes mensais a partir de {new Date(form.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.
+                                    </p>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )}
+
+                        {/* ── Scheduling (isPending) ────────────────── */}
+                        {!isEditing && !installments.enabled && (
+                          <button
+                            type="button"
+                            onClick={() => setIsPending(v => !v)}
+                            className={cn(
+                              'w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 font-semibold text-sm transition-all',
+                              isPending
+                                ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'
+                                : 'border-blue-100 dark:border-slate-700 text-blue-400 dark:text-slate-500 hover:border-blue-300',
+                            )}
+                          >
+                            <span className="flex items-center gap-2">
+                              <Icons.Clock className="w-4 h-4" />
+                              Lançamento futuro / agendado
+                            </span>
+                            <span className={cn(
+                              'text-xs px-2 py-0.5 rounded-full font-bold',
+                              isPending
+                                ? 'bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300'
+                                : 'bg-blue-100 dark:bg-slate-700 text-blue-400 dark:text-slate-500',
+                            )}>
+                              {isPending ? 'Pendente' : 'Efetivado'}
+                            </span>
+                          </button>
+                        )}
+                        {isPending && !installments.enabled && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2">
+                            Lançamento agendado — não afeta saldo até ser confirmado.
+                          </p>
+                        )}
                       </>
                     )}
                   </motion.div>

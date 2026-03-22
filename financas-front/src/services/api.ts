@@ -53,6 +53,15 @@ export const transactionsApi = {
     request<TransactionResponse>(`/transactions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id: string) =>
     request<void>(`/transactions/${id}`, { method: 'DELETE' }),
+  confirm: (id: string) =>
+    request<TransactionResponse>(`/transactions/${id}/confirm`, { method: 'PATCH' }),
+  createInstallments: (data: {
+    amount: number; installments: number; accountId: string;
+    categoryId?: string; description: string; date: string;
+    type: 'income' | 'expense'; paymentMethod?: 'debit' | 'credit';
+  }) => request<{ ref: string; count: number; transactions: TransactionResponse[] }>(
+    '/transactions/installments', { method: 'POST', body: JSON.stringify(data) },
+  ),
 };
 
 // --- Categories ---
@@ -337,6 +346,8 @@ export interface TransactionResponse {
   date: string;
   paymentMethod?: 'debit' | 'credit';
   isTransfer?: boolean;
+  isPending?: boolean;
+  installmentRef?: string;
   accountId?: string;
   categoryId?: string;
   category?: CategoryResponse;
@@ -359,6 +370,8 @@ export interface CreateTransactionPayload {
   description?: string;
   paymentMethod?: 'debit' | 'credit';
   accountId: string;
+  isPending?: boolean;
+  installmentRef?: string;
   categoryId?: string;
   isTransfer?: boolean;
 }

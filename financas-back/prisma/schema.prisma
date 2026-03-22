@@ -121,6 +121,8 @@ model Transaction {
   description   String?         @db.Text
   date          DateTime
   paymentMethod PaymentMethod?  @map("payment_method")
+  isPending     Boolean         @default(false) @map("is_pending")
+  installmentRef String?        @map("installment_ref") @db.VarChar(64)
   isTransfer    Boolean         @default(false) @map("is_transfer")
   transferId    String?         @map("transfer_id")
   transferFrom  Transfer?       @relation("TransferFrom")

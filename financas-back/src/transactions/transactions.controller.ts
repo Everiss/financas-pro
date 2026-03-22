@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { TransactionsService } from './transactions.service';
+import { TransactionsService, CreateInstallmentsDto } from './transactions.service';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -38,5 +38,15 @@ export class TransactionsController {
   @Delete(':id')
   remove(@CurrentUser() user: User, @Param('id') id: string) {
     return this.transactionsService.remove(id, user.id);
+  }
+
+  @Post('installments')
+  createInstallments(@CurrentUser() user: User, @Body() dto: CreateInstallmentsDto) {
+    return this.transactionsService.createInstallments(user.id, dto);
+  }
+
+  @Patch(':id/confirm')
+  confirm(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.transactionsService.confirm(id, user.id);
   }
 }

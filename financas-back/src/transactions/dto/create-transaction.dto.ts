@@ -39,4 +39,14 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsBoolean()
   isTransfer?: boolean;
+
+  @ApiPropertyOptional({ description: 'Lançamento pendente — não afeta saldo até ser confirmado' })
+  @IsOptional()
+  @IsBoolean()
+  isPending?: boolean;
+
+  @ApiPropertyOptional({ description: 'Referência de grupo de parcelas (uuid gerado pelo client)' })
+  @IsOptional()
+  @IsString()
+  installmentRef?: string;
 }

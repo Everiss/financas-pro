@@ -82,6 +82,8 @@ function toTransaction(r: TransactionResponse): Transaction {
     accountId: r.accountId,
     paymentMethod: r.paymentMethod,
     isTransfer: r.isTransfer ?? false,
+    isPending: r.isPending ?? false,
+    installmentRef: r.installmentRef,
     userId: r.userId,
   };
 }
