@@ -58,7 +58,7 @@ export function ReminderModal({ onClose, categories, accounts, userId, onRefresh
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="p-6 space-y-6">
           <RadioGroup
             label="Tipo de Lembrete"
             value={form.type}

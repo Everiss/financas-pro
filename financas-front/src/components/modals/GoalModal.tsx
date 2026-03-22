@@ -75,7 +75,7 @@ export function GoalModal({ onClose, userId, goal, onRefresh }: { onClose: () =>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="p-6 space-y-6">
           <div className="grid grid-cols-1 gap-4">
             <Input
               label="Nome da Meta"

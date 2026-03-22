@@ -7,17 +7,32 @@ import { transactionsApi, aiApi, ReceiptExtraction, CreateTransactionPayload } f
 import { Transaction, Category, BankAccount } from '../../types';
 import { PlanGate } from '../PlanGate';
 
-export function TransactionModal({ onClose, categories, accounts, transactions, userId, onRefresh }: { onClose: () => void; categories: Category[]; accounts: BankAccount[]; transactions: Transaction[]; userId: string; onRefresh: () => Promise<void> }) {
-  const [form, setForm] = useState({
-    amount: '',
-    type: 'expense' as 'income' | 'expense',
-    category: categories[0]?.id || '',
-    accountId: accounts.find(a => a.type !== 'credit')?.id || '',
-    paymentMethod: 'debit' as 'debit' | 'credit',
-    date: new Date().toISOString().split('T')[0],
-    description: ''
+export function TransactionModal({ onClose, categories, accounts, transactions, userId, onRefresh, editTransaction }: { onClose: () => void; categories: Category[]; accounts: BankAccount[]; transactions: Transaction[]; userId: string; onRefresh: () => Promise<void>; editTransaction?: Transaction }) {
+  const isEditing = !!editTransaction;
+  const [form, setForm] = useState(() => {
+    if (editTransaction) {
+      return {
+        amount: editTransaction.amount.toString(),
+        type: editTransaction.type,
+        category: editTransaction.category,
+        accountId: editTransaction.accountId,
+        paymentMethod: (editTransaction.paymentMethod || 'debit') as 'debit' | 'credit',
+        date: editTransaction.date.toDate().toISOString().split('T')[0],
+        description: editTransaction.description || '',
+      };
+    }
+    return {
+      amount: '',
+      type: 'expense' as 'income' | 'expense',
+      category: categories[0]?.id || '',
+      accountId: accounts.find(a => a.type !== 'credit')?.id || '',
+      paymentMethod: 'debit' as 'debit' | 'credit',
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+    };
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // --- Upload de comprovante ---
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -80,26 +95,32 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.amount || !form.category || !form.accountId) return;
-
+    const amount = parseFloat(form.amount);
+    if (!form.amount || isNaN(amount) || amount <= 0 || !form.category || !form.date) return;
+    setError(null);
     setLoading(true);
     try {
       const data: CreateTransactionPayload = {
-        amount: parseFloat(form.amount),
+        amount,
         type: form.type,
         categoryId: form.category,
         date: form.date,
         description: form.description || undefined,
-        accountId: form.accountId,
+        accountId: form.accountId || undefined,
       };
       if (form.type === 'expense') {
         data.paymentMethod = form.paymentMethod;
       }
-      await transactionsApi.create(data);
+      if (isEditing && editTransaction) {
+        await transactionsApi.update(editTransaction.id, data);
+      } else {
+        await transactionsApi.create(data);
+      }
       await onRefresh();
       onClose();
-    } catch (err) {
-      console.error('Erro ao criar transação:', err);
+    } catch (err: any) {
+      console.error('Erro ao salvar transação:', err);
+      setError(err?.message || 'Erro ao salvar transação. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -114,7 +135,7 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
         className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-blue-100 dark:border-slate-700"
       >
         <div className="p-6 border-b border-blue-100 dark:border-slate-700 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100 tracking-tight">Nova Transação</h3>
+          <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100 tracking-tight">{isEditing ? 'Editar Transação' : 'Nova Transação'}</h3>
           <div className="flex items-center gap-2">
             <PlanGate feature="ai">
               <button
@@ -175,7 +196,7 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="p-6 space-y-6">
           <RadioGroup
             label="Tipo de Transação"
             value={form.type}
@@ -275,10 +296,13 @@ export function TransactionModal({ onClose, categories, accounts, transactions, 
             />
           </div>
 
+          {error && (
+            <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2.5">{error}</p>
+          )}
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" className="flex-1" disabled={loading || !form.accountId}>
-              {loading ? 'Salvando...' : 'Confirmar Transação'}
+            <Button type="submit" className="flex-1" disabled={loading}>
+              {loading ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Confirmar Transação'}
             </Button>
           </div>
         </form>

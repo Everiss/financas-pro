@@ -18,6 +18,7 @@ export const Icons = {
   Calendar: Lucide.Calendar,
   Tag: Lucide.Tag,
   Trash2: Lucide.Trash2,
+  Pencil: Lucide.Pencil,
   Edit2: Lucide.Edit2,
   LogOut: Lucide.LogOut,
   User: Lucide.User,

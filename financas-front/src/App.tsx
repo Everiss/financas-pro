@@ -589,7 +589,7 @@ export default function App() {
 
               {activeTab === 'transactions' && (
                 <motion.div key="transactions" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                  <TransactionManager transactions={transactions} categories={categories} accounts={accounts} onRefresh={fetchAllData} />
+                  <TransactionManager transactions={transactions} categories={categories} accounts={accounts} onRefresh={fetchAllData} userId={user?.uid || ''} />
                 </motion.div>
               )}
 

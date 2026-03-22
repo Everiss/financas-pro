@@ -6,10 +6,13 @@ import { Button, Card, Input } from '../components/ui';
 import { transactionsApi } from '../services/api';
 import { Transaction, Category, BankAccount } from '../types';
 import { PlanGate } from '../components/PlanGate';
+import { TransactionModal } from '../components/modals/TransactionModal';
+import { AnimatePresence } from 'motion/react';
 
-export function TransactionManager({ transactions, categories, accounts, onRefresh }: { transactions: Transaction[]; categories: Category[]; accounts: BankAccount[]; onRefresh: () => Promise<void> }) {
+export function TransactionManager({ transactions, categories, accounts, onRefresh, userId }: { transactions: Transaction[]; categories: Category[]; accounts: BankAccount[]; onRefresh: () => Promise<void>; userId: string }) {
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [search, setSearch] = useState('');
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const filtered = useMemo(() => {
     return transactions.filter(t => {
@@ -109,9 +112,14 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
                       {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => handleDelete(t.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
-                        <Icons.Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => setEditingTransaction(t)} className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                          <Icons.Pencil className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(t.id)} className="p-2 text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                          <Icons.Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -128,6 +136,20 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
           </div>
         )}
       </Card>
+
+      <AnimatePresence>
+        {editingTransaction && (
+          <TransactionModal
+            onClose={() => setEditingTransaction(null)}
+            categories={categories}
+            accounts={accounts}
+            transactions={transactions}
+            userId={userId}
+            onRefresh={onRefresh}
+            editTransaction={editingTransaction}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
