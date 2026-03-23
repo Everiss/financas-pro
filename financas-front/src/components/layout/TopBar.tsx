@@ -369,11 +369,11 @@ export function TopBar({
 }: TopBarProps) {
   return (
     <header
-      className="fixed top-0 right-0 z-50 h-14 flex items-center gap-3 px-4 md:px-6
+      className={`fixed top-0 right-0 z-50 h-14 flex items-center gap-3 px-4 md:px-6
                  bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl
                  border-b border-blue-100/60 dark:border-slate-700/60
-                 shadow-sm transition-all duration-300 left-0"
-      style={{ left: 0 }}
+                 shadow-sm transition-all duration-300 left-0
+                 ${sidebarCollapsed ? 'md:left-16' : 'md:left-64'}`}
     >
       {/* Sidebar toggle (mobile hamburger / desktop chevron) */}
       <button

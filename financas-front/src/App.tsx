@@ -430,7 +430,7 @@ function AppInner() {
 
         {/* Sidebar / Nav */}
         <nav
-          className={`fixed bottom-0 left-0 right-0 md:top-14 md:bottom-0 md:right-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t md:border-t-0 md:border-r border-blue-100/50 dark:border-slate-700/50 z-40 transition-all duration-300 ${sidebarCollapsed ? 'md:w-16' : 'md:w-64'}`}
+          className={`fixed bottom-0 left-0 right-0 md:top-0 md:bottom-0 md:right-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t md:border-t-0 md:border-r border-blue-100/50 dark:border-slate-700/50 z-40 transition-all duration-300 ${sidebarCollapsed ? 'md:w-16' : 'md:w-64'}`}
           style={{ backgroundColor: darkMode ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.9)' }}
         >
           <div className="h-full flex flex-col p-2 md:p-4">
@@ -638,6 +638,7 @@ function AppInner() {
                     transactions={transactions}
                     categories={categories}
                     onPayBill={(toId, amount) => setTransferenciaModal({ open: true, prefillToId: toId, prefillAmount: amount })}
+                    onRefresh={fetchAllData}
                   />
                 </motion.div>
               )}

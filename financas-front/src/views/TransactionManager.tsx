@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { cn, formatCurrency, formatDate } from '../lib/utils';
 import { Icons } from '../components/Icons';
@@ -10,9 +10,12 @@ import { TransactionModal } from '../components/modals/TransactionModal';
 import { AnimatePresence } from 'motion/react';
 import { useConfirm } from '../contexts/ConfirmContext';
 
+const PAGE_SIZE = 20;
+
 export function TransactionManager({ transactions, categories, accounts, onRefresh, userId }: { transactions: Transaction[]; categories: Category[]; accounts: BankAccount[]; onRefresh: () => Promise<void>; userId: string }) {
   const [filter, setFilter] = useState<'all' | 'income' | 'expense' | 'pending'>('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const { confirm } = useConfirm();
 
@@ -25,6 +28,12 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
       return matchesFilter && matchesSearch;
     });
   }, [transactions, categories, filter, search]);
+
+  // reset page when filter or search changes
+  useEffect(() => { setPage(0); }, [filter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const pendingCount = transactions.filter(t => t.isPending).length;
 
@@ -129,7 +138,7 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
               </tr>
             </thead>
             <tbody className="divide-y divide-blue-100/50 dark:divide-slate-700/50">
-              {filtered.map(t => {
+              {paginated.map(t => {
                 const account = accounts.find(a => a.id === t.accountId);
                 const isPending = !!t.isPending;
                 const isInstallment = !!t.installmentRef;
@@ -211,6 +220,76 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
               <Icons.Search className="w-6 h-6 text-blue-300 dark:text-slate-500" />
             </div>
             <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhuma transação encontrada.</p>
+          </div>
+        )}
+
+        {filtered.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between px-6 py-3 border-t border-blue-100/60 dark:border-slate-700/60 bg-blue-50/30 dark:bg-slate-800/30">
+            <span className="text-xs text-blue-400 dark:text-slate-400">
+              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} de {filtered.length} transações
+            </span>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(0)}
+                disabled={page === 0}
+                className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Primeira página"
+              >
+                <Icons.ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Página anterior"
+              >
+                <Icons.ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i)
+                .filter(i => i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 1)
+                .reduce<(number | 'ellipsis')[]>((acc, i, idx, arr) => {
+                  if (idx > 0 && i - (arr[idx - 1] as number) > 1) acc.push('ellipsis');
+                  acc.push(i);
+                  return acc;
+                }, [])
+                .map((item, idx) =>
+                  item === 'ellipsis' ? (
+                    <span key={`e${idx}`} className="px-1 text-blue-300 dark:text-slate-500 text-xs">…</span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => setPage(item as number)}
+                      className={cn(
+                        'min-w-[28px] h-7 px-2 rounded-lg text-xs font-semibold transition-colors',
+                        page === item
+                          ? 'bg-blue-500 text-white'
+                          : 'text-blue-500 dark:text-slate-400 hover:bg-blue-100 dark:hover:bg-slate-700',
+                      )}
+                    >
+                      {(item as number) + 1}
+                    </button>
+                  )
+                )}
+
+              <button
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Próxima página"
+              >
+                <Icons.ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPage(totalPages - 1)}
+                disabled={page >= totalPages - 1}
+                className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Última página"
+              >
+                <Icons.ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </Card>

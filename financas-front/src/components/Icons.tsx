@@ -59,6 +59,10 @@ export const Icons = {
   Receipt: Lucide.Receipt,
   Menu: Lucide.Menu,
   ChevronUp: Lucide.ChevronUp,
+  ChevronsLeft: Lucide.ChevronsLeft,
+  ChevronsRight: Lucide.ChevronsRight,
+  Upload: Lucide.Upload,
+  FileText: Lucide.FileText,
 };
 
 export type IconName = keyof typeof Icons;

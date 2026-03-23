@@ -18,6 +18,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { TransfersModule } from './transfers/transfers.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SettingsModule } from './settings/settings.module';
+import { FaturaImportModule } from './fatura-import/fatura-import.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { SettingsModule } from './settings/settings.module';
     TransfersModule,
     NotificationsModule,
     SettingsModule,
+    FaturaImportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

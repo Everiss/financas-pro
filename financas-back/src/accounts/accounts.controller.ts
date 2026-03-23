@@ -26,8 +26,16 @@ export class AccountsController {
 
   @Get(':id/statement')
   @ApiQuery({ name: 'month', required: false, example: '2026-03' })
-  getStatement(@CurrentUser() user: User, @Param('id') id: string, @Query('month') month?: string) {
-    return this.accountsService.getStatement(id, user.id, month);
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  getStatement(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Query('month') month?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.accountsService.getStatement(id, user.id, month, startDate, endDate);
   }
 
   @Post()

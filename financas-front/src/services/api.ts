@@ -107,8 +107,8 @@ export const accountsApi = {
     request<AccountResponse>(`/accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id: string) =>
     request<void>(`/accounts/${id}`, { method: 'DELETE' }),
-  getStatement: (id: string, month?: string) => {
-    const qs = month ? `?month=${month}` : '';
+  getStatement: (id: string, params?: { month?: string; startDate?: string; endDate?: string }) => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
     return request<TransactionResponse[]>(`/accounts/${id}/statement${qs}`);
   },
 };
@@ -231,6 +231,48 @@ export interface ReceiptExtraction {
   establishment: string;
   confidence: 'high' | 'medium' | 'low';
 }
+
+// --- Fatura Import ---
+
+export interface ReconciliationItem {
+  extracted: { date: string; description: string; amount: number };
+  matchId: string | null;
+  matchDescription: string | null;
+  matchDate: string | null;
+  matchAmount: number | null;
+  confidence: 'exact' | 'fuzzy' | 'none';
+}
+
+export interface ConfirmItem {
+  extracted: { date: string; description: string; amount: number };
+  action: 'link' | 'create' | 'skip';
+  matchId?: string;
+  categoryId?: string;
+}
+
+export const faturaImportApi = {
+  upload: async (file: File, accountId: string): Promise<ReconciliationItem[]> => {
+    const token = await getToken();
+    const body = new FormData();
+    body.append('file', file);
+    body.append('accountId', accountId);
+    const res = await fetch(`${API_URL}/fatura-import/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message ?? 'Erro ao processar fatura.');
+    }
+    return res.json();
+  },
+  confirm: (accountId: string, items: ConfirmItem[]) =>
+    request<{ linked: number; created: number; skipped: number }>('/fatura-import/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ accountId, items }),
+    }),
+};
 
 // --- Open Finance (Pluggy) ---
 

@@ -738,6 +738,87 @@ function BankCard({
   );
 }
 
+// ─── Indicator card ───────────────────────────────────────────────────────────
+
+const TYPE_ICON: Record<string, IconName> = {
+  checking:   'Wallet',
+  savings:    'PiggyBank',
+  investment: 'TrendingUp',
+  credit:     'CreditCard',
+  loan:       'HandCoins',
+  financing:  'Receipt',
+};
+
+const TYPE_GRADIENT: Record<string, string> = {
+  checking:   'from-blue-500 to-blue-600',
+  savings:    'from-emerald-500 to-emerald-600',
+  investment: 'from-violet-500 to-violet-600',
+  credit:     'from-amber-500 to-amber-600',
+  loan:       'from-rose-500 to-rose-600',
+  financing:  'from-orange-500 to-orange-600',
+};
+
+const TYPE_BG: Record<string, string> = {
+  checking:   'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800',
+  savings:    'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
+  investment: 'bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800',
+  credit:     'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
+  loan:       'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800',
+  financing:  'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800',
+};
+
+const TYPE_TEXT: Record<string, string> = {
+  checking:   'text-blue-700 dark:text-blue-300',
+  savings:    'text-emerald-700 dark:text-emerald-300',
+  investment: 'text-violet-700 dark:text-violet-300',
+  credit:     'text-amber-700 dark:text-amber-300',
+  loan:       'text-rose-700 dark:text-rose-300',
+  financing:  'text-orange-700 dark:text-orange-300',
+};
+
+function IndicatorCard({
+  type, count, label, value, valueLabel, active, onClick,
+}: {
+  type: string; count: number; label: string;
+  value: number; valueLabel: string;
+  active: boolean; onClick: () => void;
+}) {
+  const Icon = Icons[TYPE_ICON[type] ?? 'Wallet'];
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex-shrink-0 w-44 rounded-2xl border-2 p-4 text-left transition-all duration-200',
+        active
+          ? TYPE_BG[type] + ' shadow-md scale-[1.02] border-current'
+          : 'bg-white dark:bg-slate-900 border-blue-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-slate-600 hover:shadow-sm',
+      )}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className={cn(
+          'w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br shadow-sm',
+          TYPE_GRADIENT[type] ?? 'from-blue-500 to-blue-600',
+        )}>
+          <Icon className="w-4.5 h-4.5 text-white w-[18px] h-[18px]" />
+        </div>
+        <span className={cn(
+          'text-xs font-bold px-2 py-0.5 rounded-full',
+          active ? TYPE_BG[type] + ' ' + TYPE_TEXT[type] : 'bg-blue-50 dark:bg-slate-800 text-blue-400 dark:text-slate-500',
+        )}>
+          {count}×
+        </span>
+      </div>
+      <p className={cn('text-xs font-semibold uppercase tracking-wide truncate', active ? TYPE_TEXT[type] : 'text-blue-400 dark:text-slate-500')}>{label}</p>
+      <p className={cn('text-base font-bold mt-0.5 truncate', active ? TYPE_TEXT[type] : 'text-blue-900 dark:text-slate-100')}>
+        {valueLabel}
+      </p>
+      <p className="text-[10px] text-blue-300 dark:text-slate-600 mt-0.5 truncate">
+        {formatCurrency(Math.abs(value))}
+      </p>
+    </button>
+  );
+}
+
 // ─── AccountManager ───────────────────────────────────────────────────────────
 
 export function AccountManager({
@@ -753,6 +834,8 @@ export function AccountManager({
   const [isAddingBank, setIsAddingBank] = useState(false);
   const [newBank, setNewBank] = useState({ name: '', color: '#3b82f6', icon: 'Landmark' as IconName });
   const [bankError, setBankError] = useState('');
+  const [activeType, setActiveType] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const handleAddBank = async () => {
     if (!newBank.name.trim()) { setBankError('Informe o nome do banco.'); return; }
@@ -765,19 +848,168 @@ export function AccountManager({
     } catch (err) { console.error(err); }
   };
 
+  // ── Indicator data ─────────────────────────────────────────────────────────
+  const TYPES = ['checking', 'savings', 'investment', 'credit', 'loan', 'financing'] as const;
+
+  const indicators = TYPES.map(type => {
+    const group = accounts.filter(a => a.type === type);
+    if (group.length === 0) return null;
+    const isDebt   = DEBT_TYPES.includes(type);
+    const isCredit = type === 'credit';
+    const total = group.reduce((s, a) =>
+      s + (isDebt ? a.balance : isCredit ? Math.abs(a.balance) : a.balance), 0);
+    const valueLabel = isDebt
+      ? formatCurrency(total) + ' dev.'
+      : isCredit
+        ? formatCurrency(total) + ' fat.'
+        : formatCurrency(total);
+    return { type, count: group.length, label: TYPE_LABELS[type], value: total, valueLabel };
+  }).filter(Boolean) as { type: string; count: number; label: string; value: number; valueLabel: string }[];
+
+  // Global patrimônio card
+  const brlAssets = accounts.filter(a => !DEBT_TYPES.includes(a.type) && a.type !== 'credit' && (a.currency ?? 'BRL') === 'BRL');
+  const totalPatrimonio = brlAssets.reduce((s, a) => s + a.balance, 0);
+
+  // ── Filtering ──────────────────────────────────────────────────────────────
+  const q = search.toLowerCase();
+
+  const filteredBanks = banks.filter(bank => {
+    const bankAccounts = accounts.filter(a => a.bankId === bank.id);
+    const matchesType = activeType ? bankAccounts.some(a => a.type === activeType) : true;
+    const matchesSearch = !q
+      || bank.name.toLowerCase().includes(q)
+      || bankAccounts.some(a => a.name.toLowerCase().includes(q));
+    return matchesType && matchesSearch;
+  });
+
+  const getFilteredAccounts = (bankId: string) => {
+    const bankAccounts = accounts.filter(a => a.bankId === bankId);
+    return bankAccounts.filter(a => {
+      const matchesType   = activeType ? a.type === activeType : true;
+      const matchesSearch = !q || a.name.toLowerCase().includes(q) || banks.find(b => b.id === bankId)?.name.toLowerCase().includes(q);
+      return matchesType && matchesSearch;
+    });
+  };
+
   return (
     <div className="space-y-5">
-      {/* Page toolbar */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-blue-400 dark:text-slate-500 font-medium">
-            {banks.length} {banks.length === 1 ? 'instituição' : 'instituições'} · {accounts.length} {accounts.length === 1 ? 'produto' : 'produtos'}
-          </p>
+
+      {/* ── Indicator cards ─────────────────────────────────────────────── */}
+      {indicators.length > 0 && (
+        <div className="space-y-3">
+          {/* Patrimônio summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-4 text-white shadow-md shadow-blue-600/20">
+              <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Patrimônio BRL</p>
+              <p className="text-2xl font-bold mt-1">{formatCurrency(totalPatrimonio)}</p>
+              <p className="text-xs opacity-70 mt-1">{accounts.length} produto{accounts.length !== 1 ? 's' : ''} · {banks.length} banco{banks.length !== 1 ? 's' : ''}</p>
+            </div>
+            {indicators.slice(0, 3).map(ind => (
+              <div
+                key={ind.type}
+                className={cn('rounded-2xl border p-3.5 cursor-pointer transition-all', activeType === ind.type ? TYPE_BG[ind.type] + ' shadow-sm' : 'bg-white dark:bg-slate-900 border-blue-100 dark:border-slate-700')}
+                onClick={() => setActiveType(activeType === ind.type ? null : ind.type)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className={cn('text-[10px] font-bold uppercase tracking-wider', activeType === ind.type ? TYPE_TEXT[ind.type] : 'text-blue-400 dark:text-slate-500')}>{ind.label}</span>
+                  <span className={cn('text-xs font-bold', activeType === ind.type ? TYPE_TEXT[ind.type] : 'text-blue-400 dark:text-slate-500')}>{ind.count}×</span>
+                </div>
+                <p className={cn('text-lg font-bold truncate', activeType === ind.type ? TYPE_TEXT[ind.type] : 'text-blue-900 dark:text-slate-100')}>{ind.valueLabel}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Scrollable type cards */}
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+            {/* "Todos" pill */}
+            <button
+              onClick={() => { setActiveType(null); setSearch(''); }}
+              className={cn(
+                'flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 text-sm font-semibold transition-all',
+                !activeType
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/30'
+                  : 'bg-white dark:bg-slate-900 border-blue-100 dark:border-slate-700 text-blue-500 dark:text-slate-400 hover:border-blue-300',
+              )}
+            >
+              <Icons.LayoutDashboard className="w-4 h-4" />
+              Todos
+            </button>
+            {indicators.map(ind => {
+              const Icon = Icons[TYPE_ICON[ind.type] ?? 'Wallet'];
+              const active = activeType === ind.type;
+              return (
+                <button
+                  key={ind.type}
+                  onClick={() => setActiveType(active ? null : ind.type)}
+                  className={cn(
+                    'flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 text-sm font-semibold transition-all',
+                    active
+                      ? TYPE_BG[ind.type] + ' ' + TYPE_TEXT[ind.type] + ' shadow-sm'
+                      : 'bg-white dark:bg-slate-900 border-blue-100 dark:border-slate-700 text-blue-500 dark:text-slate-400 hover:border-blue-200 dark:hover:border-slate-600',
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {ind.label}
+                  <span className={cn(
+                    'text-xs font-bold px-1.5 py-0.5 rounded-full',
+                    active ? 'bg-white/30' : 'bg-blue-100 dark:bg-slate-700',
+                  )}>{ind.count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <Button onClick={() => setIsAddingBank(v => !v)} variant="secondary">
-          <Icons.Plus className="w-4 h-4" /> Novo Banco
-        </Button>
+      )}
+
+      {/* ── Search + toolbar ────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          'flex-1 flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all',
+          search ? 'border-blue-400 dark:border-blue-500 bg-white dark:bg-slate-800 ring-2 ring-blue-100 dark:ring-blue-900/40' : 'border-blue-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-blue-300',
+        )}>
+          <Icons.Search className="w-4 h-4 text-blue-300 dark:text-slate-500 shrink-0" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar banco ou produto..."
+            className="flex-1 bg-transparent text-sm text-blue-900 dark:text-slate-100 placeholder-blue-300 dark:placeholder-slate-500 focus:outline-none"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="text-blue-300 hover:text-blue-500">
+              <Icons.X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-blue-400 dark:text-slate-500 hidden sm:block whitespace-nowrap">
+            {filteredBanks.length} banco{filteredBanks.length !== 1 ? 's' : ''}
+          </p>
+          <Button onClick={() => setIsAddingBank(v => !v)} variant="secondary">
+            <Icons.Plus className="w-4 h-4" /> Novo Banco
+          </Button>
+        </div>
       </div>
+
+      {/* active filter pill */}
+      {(activeType || search) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {activeType && (
+            <span className={cn('flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border', TYPE_BG[activeType], TYPE_TEXT[activeType])}>
+              {TYPE_LABELS[activeType]}
+              <button onClick={() => setActiveType(null)} className="hover:opacity-70"><Icons.X className="w-3 h-3" /></button>
+            </span>
+          )}
+          {search && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400">
+              "{search}"
+              <button onClick={() => setSearch('')} className="hover:opacity-70"><Icons.X className="w-3 h-3" /></button>
+            </span>
+          )}
+          <button onClick={() => { setActiveType(null); setSearch(''); }} className="text-xs text-blue-400 dark:text-slate-500 hover:text-blue-600 underline">
+            Limpar filtros
+          </button>
+        </div>
+      )}
 
       {/* Add bank form */}
       <AnimatePresence>
@@ -851,17 +1083,28 @@ export function AccountManager({
 
       {/* Bank cards list */}
       <div className="space-y-3">
-        {banks.map(bank => (
+        {filteredBanks.map(bank => (
           <BankCard
             key={bank.id}
             bank={bank}
-            accounts={accounts.filter(a => a.bankId === bank.id)}
+            accounts={getFilteredAccounts(bank.id)}
             transactions={transactions}
             reminders={reminders}
             totalAccounts={accounts.length}
             onRefresh={onRefresh}
           />
         ))}
+        {filteredBanks.length === 0 && banks.length > 0 && (
+          <div className="py-12 text-center">
+            <p className="text-blue-500 dark:text-slate-400 font-medium">Nenhum resultado para os filtros aplicados.</p>
+            <button
+              onClick={() => { setActiveType(null); setSearch(''); }}
+              className="mt-2 text-sm text-blue-400 hover:text-blue-600 dark:text-slate-500 underline"
+            >
+              Limpar filtros
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Empty state */}

@@ -57,10 +57,12 @@ export class AccountsService {
     return { message: 'Conta removida com sucesso.' };
   }
 
-  async getStatement(id: string, userId: string, month?: string) {
+  async getStatement(id: string, userId: string, month?: string, startDate?: string, endDate?: string) {
     await this.findOne(id, userId);
     const where: any = { accountId: id };
-    if (month) {
+    if (startDate && endDate) {
+      where.date = { gte: new Date(startDate), lte: new Date(endDate) };
+    } else if (month) {
       const start = new Date(`${month}-01`);
       const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59);
       where.date = { gte: start, lte: end };

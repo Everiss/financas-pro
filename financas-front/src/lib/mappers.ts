@@ -9,9 +9,16 @@ import {
 import { Transaction, Category, BankAccount, Bank, Goal, Reminder } from '../types';
 
 export function fakeTimestamp(dateStr: string | null | undefined) {
+  // Parseia só a parte YYYY-MM-DD como meia-noite local para evitar
+  // que o offset UTC-3 desloque a data para o dia anterior.
+  function parseLocalDate(s: string): Date {
+    const datePart = s.split('T')[0]; // "2026-03-21"
+    const [y, m, d] = datePart.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
   return {
-    toDate: () => (dateStr ? new Date(dateStr) : new Date()),
-    seconds: dateStr ? Math.floor(new Date(dateStr).getTime() / 1000) : 0,
+    toDate: () => (dateStr ? parseLocalDate(dateStr) : new Date()),
+    seconds: dateStr ? Math.floor(parseLocalDate(dateStr).getTime() / 1000) : 0,
   };
 }
 
