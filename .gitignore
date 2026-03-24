@@ -10,11 +10,11 @@ financas-front/dist/
 
 # Variáveis de ambiente (NUNCA commitar)
 .env
+.env.prod
 financas-back/.env
 financas-front/.env
 
-# Prisma
-financas-back/prisma/migrations/
+# Prisma (migrations devem ser versionadas)
 
 # Logs
 *.log

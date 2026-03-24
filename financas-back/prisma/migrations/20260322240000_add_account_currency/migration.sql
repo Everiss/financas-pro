@@ -1,0 +1,1 @@
+ALTER TABLE `bank_accounts` ADD COLUMN `currency` VARCHAR(3) NOT NULL DEFAULT 'BRL';

@@ -1,18 +1,14 @@
 #!/bin/bash
-# deploy.sh — Executa na instância EC2 após o push das imagens para o ECR
+# ─── deploy.sh — executa na VPS ───────────────────────────────────────────────
 set -e
 
-echo "==> Fazendo login no ECR..."
-aws ecr get-login-password --region $AWS_REGION | \
-  docker login --username AWS --password-stdin $ECR_REGISTRY
+echo "==> Atualizando código..."
+git pull origin main
 
-echo "==> Baixando imagens mais recentes..."
-docker compose -f docker-compose.prod.yml pull
+echo "==> Reconstruindo e subindo containers..."
+docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 
-echo "==> Subindo containers..."
-docker compose -f docker-compose.prod.yml up -d --remove-orphans
-
-echo "==> Removendo imagens antigas..."
+echo "==> Limpando imagens antigas..."
 docker image prune -f
 
 echo "==> Deploy concluído!"
