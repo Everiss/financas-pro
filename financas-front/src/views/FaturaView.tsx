@@ -8,6 +8,7 @@ import { Transaction, Category, BankAccount } from '../types';
 import { ImportFaturaModal } from '../components/modals/ImportFaturaModal';
 import { accountsApi, TransactionResponse } from '../services/api';
 import { toTransaction } from '../lib/mappers';
+import { BankLogo } from '../components/BankLogo';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ function CreditCardTile({
         <span className="w-8 h-6 rounded bg-yellow-400/80 flex items-center justify-center">
           <span className="text-yellow-900 text-[8px] font-bold">SIM</span>
         </span>
-        <Icons.CreditCard className="w-5 h-5 text-white/70" />
+        <BankLogo bankName={card.bank?.name} size={20} fallbackColor={card.color ?? '#3b82f6'} />
       </div>
 
       <div className="relative z-10">

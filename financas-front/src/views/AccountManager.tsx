@@ -8,6 +8,8 @@ import { Transaction, BankAccount, Bank, Reminder } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { PlanGate } from '../components/PlanGate';
 import { BANK_COLORS, BANK_ICONS, EMPTY_ACC, SUBTYPE_OPTIONS, SUBTYPE_LABELS, DEBT_TYPES, CURRENCIES } from '../lib/constants';
+import { BankLogo } from '../components/BankLogo';
+import { getBankSlug } from '../lib/bankLogos';
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -407,12 +409,15 @@ function BankCard({
 
       {/* ── Bank header ───────────────────────────────────────────────────── */}
       <div className="flex items-center gap-4 p-5">
-        {/* Color accent + icon */}
+        {/* Logo / icon do banco */}
         <div
           className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm shrink-0"
           style={{ backgroundColor: `${bank.color}20`, color: bank.color }}
         >
-          <BankIcon className="w-6 h-6" />
+          {getBankSlug(bank.name)
+            ? <BankLogo bankName={bank.name} size={28} fallbackColor={bank.color} />
+            : <BankIcon className="w-6 h-6" />
+          }
         </div>
 
         {/* Name + summary */}

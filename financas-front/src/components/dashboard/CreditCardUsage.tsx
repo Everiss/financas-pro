@@ -3,6 +3,7 @@ import { cn, formatCurrency } from '../../lib/utils';
 import { motion } from 'motion/react';
 import { Card } from '../ui';
 import { Transaction, BankAccount } from '../../types';
+import { BankLogo } from '../BankLogo';
 
 export function CreditCardUsage({ accounts, transactions, onPayBill }: { accounts: BankAccount[]; transactions: Transaction[]; onPayBill?: (toId: string, amount: number) => void }) {
   const creditCards = useMemo(() => {
@@ -12,7 +13,7 @@ export function CreditCardUsage({ accounts, transactions, onPayBill }: { account
         const used = Math.max(0, acc.balance);
         const available = Math.max(0, acc.creditLimit! - used);
         const percentage = Math.min((used / acc.creditLimit!) * 100, 100);
-        return { id: acc.id, name: acc.name, used, available, limit: acc.creditLimit!, percentage, color: acc.color };
+        return { id: acc.id, name: acc.name, bank: acc.bank?.name ?? null, used, available, limit: acc.creditLimit!, percentage, color: acc.color ?? '#3b82f6' };
       });
   }, [accounts, transactions]);
 
@@ -24,9 +25,20 @@ export function CreditCardUsage({ accounts, transactions, onPayBill }: { account
         {creditCards.map(card => (
           <div key={card.id} className="space-y-3">
             <div className="flex justify-between items-start">
-              <div>
-                <h4 className="font-bold text-blue-900 dark:text-slate-100 text-sm">{card.name}</h4>
-                <p className="text-[10px] text-blue-500 dark:text-slate-400 font-medium uppercase tracking-wider">Limite: {formatCurrency(card.limit)}</p>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: `${card.color}22`, border: `1px solid ${card.color}44` }}
+                >
+                  <BankLogo bankName={card.bank} size={22} fallbackColor={card.color} />
+                </div>
+                <div>
+                  {card.bank && (
+                    <p className="text-[10px] text-blue-400 dark:text-slate-500 font-semibold uppercase tracking-wider mb-0.5">{card.bank}</p>
+                  )}
+                  <h4 className="font-bold text-blue-900 dark:text-slate-100 text-sm">{card.name}</h4>
+                  <p className="text-[10px] text-blue-500 dark:text-slate-400 font-medium uppercase tracking-wider">Limite: {formatCurrency(card.limit)}</p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="text-right">
