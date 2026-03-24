@@ -41,6 +41,7 @@ export const Icons = {
   Shield: Lucide.Shield,
   Briefcase: Lucide.Briefcase,
   CheckCircle: Lucide.CheckCircle,
+  ScanLine: Lucide.ScanLine,
   Trophy: Lucide.Trophy,
   Flag: Lucide.Flag,
   Quote: Lucide.Quote,

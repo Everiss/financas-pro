@@ -27,6 +27,7 @@ model User {
   reminders       Reminder[]
   goals           Goal[]
   transfers       Transfer[]
+  receipts        Receipt[]
   aiInsightCache  AiInsightCache?
   auditLogs       AuditLog[]
   subscription    Subscription?
@@ -156,6 +157,7 @@ model Category {
   user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   reminders    Reminder[]
+  receiptItems ReceiptItem[]
 
   @@index([userId])
   @@map("categories")
@@ -183,6 +185,7 @@ model Transaction {
   account    BankAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
   categoryId String?      @map("category_id")
   category   Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  receipt    Receipt?
 
   @@index([userId, date])
   @@index([userId, type])
@@ -289,6 +292,43 @@ model Transfer {
 
   @@index([userId])
   @@map("transfers")
+}
+
+model Receipt {
+  id            String        @id @default(uuid())
+  issuerName    String?       @map("issuer_name") @db.VarChar(200)
+  issuerCnpj    String?       @map("issuer_cnpj") @db.VarChar(20)
+  totalAmount   Decimal       @map("total_amount") @db.Decimal(15, 2)
+  issueDate     DateTime?     @map("issue_date")
+  accessKey     String?       @map("access_key") @db.VarChar(50)
+  source        String        @default("image") @db.VarChar(20)
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  userId        String        @map("user_id")
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String?       @unique @map("transaction_id")
+  transaction   Transaction?  @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  items         ReceiptItem[]
+
+  @@index([userId])
+  @@map("receipts")
+}
+
+model ReceiptItem {
+  id          String    @id @default(uuid())
+  description String    @db.VarChar(300)
+  quantity    Decimal   @db.Decimal(10, 3)
+  unit        String?   @db.VarChar(10)
+  unitPrice   Decimal   @map("unit_price") @db.Decimal(15, 2)
+  totalPrice  Decimal   @map("total_price") @db.Decimal(15, 2)
+
+  receiptId   String    @map("receipt_id")
+  receipt     Receipt   @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  categoryId  String?   @map("category_id")
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([receiptId])
+  @@map("receipt_items")
 }
 
 // --- Enums ---

@@ -584,3 +584,61 @@ export interface AiInvestmentAnalysis {
   risks: string[];
   recommendations: Array<{ action: string; reason: string; priority: 'alta' | 'média' | 'baixa' }>;
 }
+
+// --- Coupon Scanner ---
+
+export interface ScannedReceiptItem {
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  totalPrice: number;
+  suggestedCategoryId: string | null;
+  suggestedCategoryName: string | null;
+}
+
+export interface ScannedReceipt {
+  issuerName: string | null;
+  issuerCnpj: string | null;
+  issueDate: string | null;
+  totalAmount: number;
+  accessKey: string | null;
+  items: ScannedReceiptItem[];
+}
+
+export const couponScannerApi = {
+  scan: async (file: File): Promise<ScannedReceipt> => {
+    const token = await getToken();
+    const body = new FormData();
+    body.append('file', file);
+    const res = await fetch(`${API_URL}/coupon-scanner/scan`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message ?? 'Erro ao processar cupom.');
+    }
+    return res.json();
+  },
+  confirm: (data: {
+    issuerName: string | null;
+    issuerCnpj: string | null;
+    issueDate: string | null;
+    totalAmount: number;
+    accessKey: string | null;
+    source: string;
+    items: Array<{
+      description: string; quantity: number; unit: string;
+      unitPrice: number; totalPrice: number; categoryId: string | null;
+    }>;
+    accountId: string;
+    categoryId: string | null;
+    description: string;
+    paymentMethod: string | null;
+  }) => request<{ transaction: TransactionResponse; receiptId: string; itemCount: number }>(
+    '/coupon-scanner/confirm',
+    { method: 'POST', body: JSON.stringify(data) },
+  ),
+};

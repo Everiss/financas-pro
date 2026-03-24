@@ -7,6 +7,7 @@ import { transactionsApi } from '../services/api';
 import { Transaction, Category, BankAccount } from '../types';
 import { PlanGate } from '../components/PlanGate';
 import { TransactionModal } from '../components/modals/TransactionModal';
+import { ScanCouponModal } from '../components/modals/ScanCouponModal';
 import { AnimatePresence } from 'motion/react';
 import { useConfirm } from '../contexts/ConfirmContext';
 
@@ -17,6 +18,7 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [showScanCoupon, setShowScanCoupon] = useState(false);
   const { confirm } = useConfirm();
 
   const filtered = useMemo(() => {
@@ -115,6 +117,14 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
                 {pendingCount}
               </span>
             )}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setShowScanCoupon(true)}
+            className="px-3 py-2 text-xs flex items-center gap-1.5 border border-blue-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800"
+          >
+            <Icons.ScanLine className="w-3.5 h-3.5" />
+            Cupom Fiscal
           </Button>
           <PlanGate feature="exportExcel">
             <Button variant="secondary" onClick={handleExport} className="px-3 py-2 text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
@@ -293,6 +303,14 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
           </div>
         )}
       </Card>
+
+      <ScanCouponModal
+        open={showScanCoupon}
+        onClose={() => setShowScanCoupon(false)}
+        accounts={accounts}
+        categories={categories}
+        onSuccess={() => { setShowScanCoupon(false); onRefresh(); }}
+      />
 
       <AnimatePresence>
         {editingTransaction && (

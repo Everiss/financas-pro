@@ -19,6 +19,7 @@ import { TransfersModule } from './transfers/transfers.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SettingsModule } from './settings/settings.module';
 import { FaturaImportModule } from './fatura-import/fatura-import.module';
+import { CouponScannerModule } from './coupon-scanner/coupon-scanner.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { FaturaImportModule } from './fatura-import/fatura-import.module';
     NotificationsModule,
     SettingsModule,
     FaturaImportModule,
+    CouponScannerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
