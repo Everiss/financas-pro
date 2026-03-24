@@ -667,7 +667,11 @@ export function TransactionModal({
                           label={mode === 'income' ? 'Produto de destino' : 'Produto de pagamento'}
                           required
                           value={form.accountId}
-                          onChange={id => setForm(f => ({ ...f, accountId: id }))}
+                          onChange={id => {
+                            const acc = accounts.find(a => a.id === id);
+                            if (acc?.type !== 'credit') setInstallments({ enabled: false, count: 2 });
+                            setForm(f => ({ ...f, accountId: id }));
+                          }}
                           options={availableAccounts}
                           hint={
                             mode === 'expense'
@@ -706,8 +710,8 @@ export function TransactionModal({
                           onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                         />
 
-                        {/* ── Installments ─────────────────────────── */}
-                        {!isEditing && (
+                        {/* ── Installments — só para despesa em cartão de crédito ── */}
+                        {!isEditing && mode === 'expense' && selectedAcc?.type === 'credit' && (
                           <div className="space-y-3 pt-1 border-t border-blue-100 dark:border-slate-700">
                             <button
                               type="button"

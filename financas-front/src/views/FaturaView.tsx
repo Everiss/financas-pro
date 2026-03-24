@@ -39,12 +39,14 @@ function CreditCardTile({
   card,
   selected,
   onClick,
+  balanceOverride,
 }: {
   card: BankAccount;
   selected: boolean;
   onClick: () => void;
+  balanceOverride?: number;
 }) {
-  const used    = Math.max(0, card.balance);
+  const used    = balanceOverride ?? Math.max(0, card.balance);
   const limit   = card.creditLimit ?? 0;
   const pct     = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
   const barColor = pct > 80 ? 'bg-red-400' : pct > 50 ? 'bg-amber-400' : 'bg-emerald-400';
@@ -243,6 +245,12 @@ export function FaturaView({
     () => invoiceTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
     [invoiceTransactions]
   );
+  // Valor efetivo: usa o saldo do cartão (dívida acumulada) ou o total do período,
+  // o que for maior — cobre casos onde transações parceladas ainda estão como pendentes.
+  const effectiveBalance = useMemo(
+    () => Math.max(selectedCard ? Math.max(0, selectedCard.balance) : 0, totalFatura),
+    [selectedCard, totalFatura]
+  );
 
   const today     = new Date();
   const isClosed  = today > closeDate;
@@ -276,6 +284,7 @@ export function FaturaView({
             card={card}
             selected={card.id === selectedCardId}
             onClick={() => setSelectedCardId(card.id)}
+            balanceOverride={card.id === selectedCardId ? effectiveBalance : undefined}
           />
         ))}
       </div>
@@ -341,8 +350,8 @@ export function FaturaView({
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="p-4">
               <p className="text-[11px] font-semibold text-blue-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total da Fatura</p>
-              <p className="text-xl font-bold text-blue-900 dark:text-slate-100">{formatCurrency(Math.max(0, selectedCard.balance))}</p>
-              {totalFatura > 0 && (
+              <p className="text-xl font-bold text-blue-900 dark:text-slate-100">{formatCurrency(effectiveBalance)}</p>
+              {totalFatura > 0 && effectiveBalance !== totalFatura && (
                 <p className="text-xs text-blue-400 dark:text-slate-500 mt-0.5">
                   {formatCurrency(totalFatura)} neste período
                   {totalCreditos > 0 && <span className="text-emerald-500"> − {formatCurrency(totalCreditos)} créditos</span>}
@@ -352,7 +361,7 @@ export function FaturaView({
             <Card className="p-4">
               <p className="text-[11px] font-semibold text-blue-400 dark:text-slate-500 uppercase tracking-wider mb-1">Limite Disponível</p>
               <p className="text-xl font-bold text-emerald-600">
-                {formatCurrency(Math.max(0, (selectedCard.creditLimit ?? 0) - Math.max(0, selectedCard.balance)))}
+                {formatCurrency(Math.max(0, (selectedCard.creditLimit ?? 0) - effectiveBalance))}
               </p>
               {(selectedCard.creditLimit ?? 0) > 0 && (
                 <p className="text-xs text-blue-400 dark:text-slate-500 mt-0.5">
@@ -364,16 +373,16 @@ export function FaturaView({
               <p className="text-[11px] font-semibold text-blue-400 dark:text-slate-500 uppercase tracking-wider mb-1">Uso do Limite</p>
               {(selectedCard.creditLimit ?? 0) > 0 ? (
                 <>
-                  <p className={cn('text-xl font-bold', ((selectedCard.balance / (selectedCard.creditLimit ?? 1)) * 100) > 80 ? 'text-red-500' : 'text-blue-900 dark:text-slate-100')}>
-                    {((Math.max(0, selectedCard.balance) / (selectedCard.creditLimit ?? 1)) * 100).toFixed(0)}%
+                  <p className={cn('text-xl font-bold', ((effectiveBalance / (selectedCard.creditLimit ?? 1)) * 100) > 80 ? 'text-red-500' : 'text-blue-900 dark:text-slate-100')}>
+                    {((effectiveBalance / (selectedCard.creditLimit ?? 1)) * 100).toFixed(0)}%
                   </p>
                   <div className="mt-2 h-1.5 rounded-full bg-blue-100 dark:bg-slate-700 overflow-hidden">
                     <div
                       className={cn('h-full rounded-full transition-all duration-500',
-                        (selectedCard.balance / (selectedCard.creditLimit ?? 1)) > 0.8 ? 'bg-red-500' :
-                        (selectedCard.balance / (selectedCard.creditLimit ?? 1)) > 0.5 ? 'bg-amber-500' : 'bg-emerald-500'
+                        (effectiveBalance / (selectedCard.creditLimit ?? 1)) > 0.8 ? 'bg-red-500' :
+                        (effectiveBalance / (selectedCard.creditLimit ?? 1)) > 0.5 ? 'bg-amber-500' : 'bg-emerald-500'
                       )}
-                      style={{ width: `${Math.min(100, (Math.max(0, selectedCard.balance) / (selectedCard.creditLimit ?? 1)) * 100)}%` }}
+                      style={{ width: `${Math.min(100, (effectiveBalance / (selectedCard.creditLimit ?? 1)) * 100)}%` }}
                     />
                   </div>
                 </>
@@ -385,11 +394,11 @@ export function FaturaView({
               <p className="text-[11px] font-semibold text-blue-400 dark:text-slate-500 uppercase tracking-wider mb-1">Pagar Fatura</p>
               <div>
                 <p className="text-xl font-bold text-blue-900 dark:text-slate-100 mb-2">
-                  {formatCurrency(Math.max(0, selectedCard.balance))}
+                  {formatCurrency(effectiveBalance)}
                 </p>
                 <button
-                  onClick={() => onPayBill(selectedCard.id, Math.max(0, selectedCard.balance))}
-                  disabled={selectedCard.balance <= 0}
+                  onClick={() => onPayBill(selectedCard.id, effectiveBalance)}
+                  disabled={effectiveBalance <= 0}
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <Icons.Banknote className="w-4 h-4" />

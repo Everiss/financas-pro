@@ -62,6 +62,8 @@ import { AuditLogView } from './views/AuditLogView';
 import { FaturaView } from './views/FaturaView';
 import { AnalyticsView } from './views/AnalyticsView';
 import { SettingsView } from './views/SettingsView';
+import { HealthView } from './views/HealthView';
+import { HealthScoreCard } from './components/dashboard/HealthScoreCard';
 
 // --- API → Frontend type adapters ---
 
@@ -179,7 +181,7 @@ function AppInner() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'fatura' | 'investments' | 'analytics' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'fatura' | 'investments' | 'analytics' | 'categories' | 'reminders' | 'accounts' | 'calendar' | 'goals' | 'audit' | 'openfinance' | 'planos' | 'settings' | 'health'>('dashboard');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transferenciaModal, setTransferenciaModal] = useState<{ open: boolean; prefillToId?: string; prefillAmount?: number }>({ open: false });
   const [dashboardMonth, setDashboardMonth] = useState(() => {
@@ -459,6 +461,7 @@ function AppInner() {
               <NavButton active={activeTab === 'fatura'} onClick={() => setActiveTab('fatura')} icon="CreditCard" label="Faturas" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'investments'} onClick={() => setActiveTab('investments')} icon="TrendingUp" label="Investimentos" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} icon="Sparkles" label="Análises IA" collapsed={sidebarCollapsed} />
+              <NavButton active={activeTab === 'health'} onClick={() => setActiveTab('health')} icon="HeartPulse" label="Saúde Financeira" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon="Tag" label="Categorias" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'calendar'} onClick={() => setActiveTab('calendar')} icon="Calendar" label="Calendário" collapsed={sidebarCollapsed} />
               <NavButton active={activeTab === 'reminders'} onClick={() => setActiveTab('reminders')} icon="List" label="Lembretes" collapsed={sidebarCollapsed} />
@@ -494,6 +497,7 @@ function AppInner() {
                   {activeTab === 'analytics' && 'Análises com IA'}
                   {activeTab === 'planos' && 'Planos & Assinatura'}
                   {activeTab === 'settings' && 'Configurações'}
+                  {activeTab === 'health' && 'Saúde Financeira'}
                 </h2>
                 <p className="text-blue-500 dark:text-slate-400 font-medium mt-1">
                   {activeTab === 'dashboard' && `Bem-vindo de volta, ${user.displayName?.split(' ')[0]}!`}
@@ -510,6 +514,7 @@ function AppInner() {
                   {activeTab === 'analytics' && 'Inteligência artificial aplicada às suas finanças.'}
                   {activeTab === 'planos' && 'Escolha o plano ideal para você.'}
                   {activeTab === 'settings' && 'Personalize alertas, lembretes, investimentos e muito mais.'}
+                  {activeTab === 'health' && 'Score e indicadores baseados em literatura financeira internacional.'}
                 </p>
               </div>
               <div className="flex items-center gap-3 self-end sm:self-auto">
@@ -576,7 +581,14 @@ function AppInner() {
                   {/* Bloco 2 — Fluxo do mês selecionado */}
                   <FluxoMes transactions={transactions} month={dashboardMonth} />
 
-                  {/* Bloco 3 — Insights IA */}
+                  {/* Bloco 3 — Saúde Financeira (score card) */}
+                  <HealthScoreCard
+                    transactions={transactions}
+                    accounts={accounts}
+                    onNavigate={() => setActiveTab('health')}
+                  />
+
+                  {/* Bloco 4 — Insights IA */}
                   <PlanGate feature="ai">
                     <AIInsights transactions={transactions} />
                   </PlanGate>
@@ -717,6 +729,12 @@ function AppInner() {
                     profile={profile}
                     onProfileUpdate={async (data) => { await usersApi.updateMe(data); }}
                   />
+                </motion.div>
+              )}
+
+              {activeTab === 'health' && (
+                <motion.div key="health" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                  <HealthView transactions={transactions} accounts={accounts} />
                 </motion.div>
               )}
             </AnimatePresence>

@@ -103,16 +103,27 @@ export class TransactionsService {
     });
   }
 
-  /** Creates N installment transactions, all pending, with monthly dates */
+  /** Creates N installment transactions. The first installment (current period) is
+   * confirmed immediately and affects the balance; future installments remain pending. */
   async createInstallments(userId: string, dto: CreateInstallmentsDto) {
     const ref = randomUUID();
     const installmentAmount = Math.round((dto.amount / dto.installments) * 100) / 100;
     const baseDate = new Date(dto.date);
 
+    // Look up account type to determine balance impact
+    const account = await this.prisma.bankAccount.findUnique({
+      where: { id: dto.accountId },
+      select: { type: true },
+    });
+
     const created: any[] = [];
     for (let i = 0; i < dto.installments; i++) {
       const d = new Date(baseDate);
       d.setMonth(d.getMonth() + i);
+
+      // Only the first installment (current period) is confirmed and affects balance
+      const isFirst = i === 0;
+
       const tx = await this.prisma.transaction.create({
         data: {
           amount: installmentAmount,
@@ -122,12 +133,21 @@ export class TransactionsService {
           accountId: dto.accountId,
           categoryId: dto.categoryId,
           paymentMethod: dto.paymentMethod as any,
-          isPending: true,
+          isPending: !isFirst,
           installmentRef: ref,
           userId,
         } as any,
         include: { category: true, account: true },
       });
+
+      if (isFirst && account) {
+        const delta = balanceDelta(dto.type, installmentAmount, account.type);
+        await this.prisma.bankAccount.update({
+          where: { id: dto.accountId },
+          data: { balance: { increment: delta } },
+        });
+      }
+
       created.push(tx);
     }
 
