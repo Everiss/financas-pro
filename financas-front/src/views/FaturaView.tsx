@@ -246,11 +246,19 @@ export function FaturaView({
     () => invoiceTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
     [invoiceTransactions]
   );
-  // Valor efetivo: usa o saldo do cartão (dívida acumulada) ou o total do período,
-  // o que for maior — cobre casos onde transações parceladas ainda estão como pendentes.
+  // Parcelas pendentes do período que ainda não entraram no saldo do cartão
+  const pendingInPeriod = useMemo(
+    () => invoiceTransactions
+      .filter(t => t.isPending && t.type === 'expense')
+      .reduce((s, t) => s + t.amount, 0),
+    [invoiceTransactions]
+  );
+  // Valor efetivo = saldo atual do cartão (dívida confirmada) + parcelas pendentes do período.
+  // Isso garante que: (a) parcelas ainda pendentes aparecem no total a pagar,
+  // (b) após pagar a fatura o saldo zera corretamente.
   const effectiveBalance = useMemo(
-    () => Math.max(selectedCard ? Math.max(0, selectedCard.balance) : 0, totalFatura),
-    [selectedCard, totalFatura]
+    () => Math.max(0, selectedCard?.balance ?? 0) + pendingInPeriod,
+    [selectedCard, pendingInPeriod]
   );
 
   const today     = new Date();

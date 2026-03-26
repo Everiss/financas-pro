@@ -33,6 +33,7 @@ export function toTransaction(r: TransactionResponse): Transaction {
     accountId: r.accountId,
     paymentMethod: r.paymentMethod,
     isTransfer: r.isTransfer ?? false,
+    isPending: r.isPending ?? false,
     userId: r.userId,
   };
 }
