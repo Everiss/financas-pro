@@ -6,9 +6,11 @@ import { Icons } from '../components/Icons';
 import { Card } from '../components/ui';
 import { Transaction, Category, BankAccount } from '../types';
 import { ImportFaturaModal } from '../components/modals/ImportFaturaModal';
+import { ExportReportModal } from '../components/modals/ExportReportModal';
 import { accountsApi, TransactionResponse } from '../services/api';
 import { toTransaction } from '../lib/mappers';
 import { BankLogo } from '../components/BankLogo';
+import { AnimatePresence } from 'motion/react';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -170,6 +172,7 @@ export function FaturaView({
     () => creditCards[0]?.id ?? ''
   );
   const [showImport, setShowImport] = useState(false);
+  const [showExportReport, setShowExportReport] = useState(false);
   const [referenceMonth, setReferenceMonth] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -326,13 +329,22 @@ export function FaturaView({
             </div>
             <div className="flex items-center gap-2 self-end sm:self-auto">
               {selectedCard && (
-                <button
-                  onClick={() => setShowImport(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
-                >
-                  <Icons.Upload className="w-3.5 h-3.5" />
-                  Importar Fatura
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowImport(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
+                  >
+                    <Icons.Upload className="w-3.5 h-3.5" />
+                    Importar Fatura
+                  </button>
+                  <button
+                    onClick={() => setShowExportReport(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                  >
+                    <Icons.Download className="w-3.5 h-3.5" />
+                    Exportar
+                  </button>
+                </>
               )}
               <button
                 onClick={() => setReferenceMonth(prev => subMonths(prev, 1))}
@@ -515,6 +527,19 @@ export function FaturaView({
           onSuccess={() => { setShowImport(false); onRefresh?.(); fetchInvoiceTxs(); }}
         />
       )}
+
+      {/* Export report modal */}
+      <AnimatePresence>
+        {showExportReport && (
+          <ExportReportModal
+            transactions={invoiceTransactions}
+            categories={categories}
+            accounts={accounts}
+            onClose={() => setShowExportReport(false)}
+            preselectedType="transactions"
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -64,6 +64,9 @@ export const Icons = {
   ChevronsRight: Lucide.ChevronsRight,
   Upload: Lucide.Upload,
   FileText: Lucide.FileText,
+  FileSpreadsheet: Lucide.FileSpreadsheet,
+  FilePdf: Lucide.File,
+  BarChart2: Lucide.BarChart2,
 };
 
 export type IconName = keyof typeof Icons;

@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import * as XLSX from 'xlsx';
 import { cn, formatCurrency, formatDate } from '../lib/utils';
 import { Icons } from '../components/Icons';
 import { Button, Card, Input } from '../components/ui';
@@ -8,6 +7,7 @@ import { Transaction, Category, BankAccount } from '../types';
 import { PlanGate } from '../components/PlanGate';
 import { TransactionModal } from '../components/modals/TransactionModal';
 import { ScanCouponModal } from '../components/modals/ScanCouponModal';
+import { ExportReportModal } from '../components/modals/ExportReportModal';
 import { AnimatePresence } from 'motion/react';
 import { useConfirm } from '../contexts/ConfirmContext';
 
@@ -19,6 +19,7 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
   const [page, setPage] = useState(0);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showScanCoupon, setShowScanCoupon] = useState(false);
+  const [showExportReport, setShowExportReport] = useState(false);
   const { confirm } = useConfirm();
 
   const filtered = useMemo(() => {
@@ -71,23 +72,6 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
     }
   };
 
-  const handleExport = () => {
-    const rows = filtered.map(t => ({
-      Data: formatDate(t.date.toDate()),
-      Descrição: t.description || '-',
-      Tipo: t.type === 'income' ? 'Receita' : 'Despesa',
-      Categoria: categories.find(c => c.id === t.category)?.name || 'Outros',
-      Conta: accounts.find(a => a.id === t.accountId)?.name || '-',
-      'Forma de Pagamento': t.paymentMethod === 'credit' ? 'Crédito' : t.paymentMethod === 'debit' ? 'Débito' : '-',
-      Valor: t.type === 'income' ? t.amount : -t.amount,
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 14 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Transações');
-    XLSX.writeFile(wb, `transacoes_${new Date().toISOString().slice(0, 10)}.xlsx`);
-  };
 
   return (
     <div className="space-y-6">
@@ -127,9 +111,13 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
             Cupom Fiscal
           </Button>
           <PlanGate feature="exportExcel">
-            <Button variant="secondary" onClick={handleExport} className="px-3 py-2 text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
+            <Button
+              variant="secondary"
+              onClick={() => setShowExportReport(true)}
+              className="px-3 py-2 text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+            >
               <Icons.Download className="w-3.5 h-3.5" />
-              Exportar Excel
+              Exportar
             </Button>
           </PlanGate>
         </div>
@@ -311,6 +299,17 @@ export function TransactionManager({ transactions, categories, accounts, onRefre
         categories={categories}
         onSuccess={() => { setShowScanCoupon(false); onRefresh(); }}
       />
+
+      <AnimatePresence>
+        {showExportReport && (
+          <ExportReportModal
+            transactions={transactions}
+            categories={categories}
+            accounts={accounts}
+            onClose={() => setShowExportReport(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {editingTransaction && (
