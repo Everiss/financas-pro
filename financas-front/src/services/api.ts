@@ -167,6 +167,8 @@ export const remindersApi = {
     request<ReminderResponse>('/reminders', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: Partial<CreateReminderPayload>) =>
     request<ReminderResponse>(`/reminders/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  confirm: (id: string) =>
+    request<ReminderResponse>(`/reminders/${id}/confirm`, { method: 'POST' }),
   delete: (id: string) =>
     request<void>(`/reminders/${id}`, { method: 'DELETE' }),
 };

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RemindersService } from './reminders.service';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
@@ -32,6 +32,12 @@ export class RemindersController {
   @Patch(':id')
   update(@CurrentUser() user: User, @Param('id') id: string, @Body() dto: UpdateReminderDto) {
     return this.remindersService.update(id, user.id, dto);
+  }
+
+  @Post(':id/confirm')
+  @HttpCode(200)
+  confirm(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.remindersService.confirm(id, user.id);
   }
 
   @Delete(':id')

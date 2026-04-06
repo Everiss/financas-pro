@@ -127,6 +127,19 @@ Regras:
       throw new BadRequestException('Nenhum item encontrado no cupom. Tente uma imagem mais nítida.');
     }
 
+    // Normaliza vírgula decimal (ex: "1,5" → 1.5) que Claude Vision pode retornar para cupons BR
+    const toNum = (v: any): number => {
+      if (typeof v === 'number') return v;
+      return parseFloat(String(v).replace(',', '.')) || 0;
+    };
+    parsed.totalAmount = toNum(parsed.totalAmount);
+    parsed.items = parsed.items.map(item => ({
+      ...item,
+      quantity:   toNum(item.quantity),
+      unitPrice:  toNum(item.unitPrice),
+      totalPrice: toNum(item.totalPrice),
+    }));
+
     return parsed;
   }
 

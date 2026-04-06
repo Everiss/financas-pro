@@ -72,7 +72,7 @@ export class NotificationsService {
 
     // ── 1. Lembretes vencidos ─────────────────────────────────────────────────
     const overdueReminders = await this.prisma.reminder.findMany({
-      where: { userId, dueDate: { lt: todayStart } },
+      where: { userId, dueDate: { lt: todayStart }, completedAt: null },
       orderBy: { dueDate: 'asc' },
       take: 10,
     });
@@ -92,7 +92,7 @@ export class NotificationsService {
 
     // ── 2. Lembretes a vencer (dentro da janela configurada) ──────────────────
     const upcomingReminders = await this.prisma.reminder.findMany({
-      where: { userId, dueDate: { gte: todayStart, lte: inAdvance } },
+      where: { userId, dueDate: { gte: todayStart, lte: inAdvance }, completedAt: null },
       orderBy: { dueDate: 'asc' },
       take: 10,
     });
@@ -164,8 +164,10 @@ export class NotificationsService {
       }
     }
 
-    // ── 4. Metas atingidas ────────────────────────────────────────────────────
-    const reachedGoals = await this.prisma.goal.findMany({ where: { userId } });
+    // ── 4. Metas atingidas (apenas as não marcadas como concluídas) ───────────
+    const reachedGoals = await this.prisma.goal.findMany({
+      where: { userId, completedAt: null },
+    });
 
     for (const g of reachedGoals) {
       if (Number(g.currentAmount) >= Number(g.targetAmount)) {

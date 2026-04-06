@@ -59,10 +59,15 @@ export class GoalsService {
     const goal = await this.findOne(id, userId);
 
     return this.prisma.$transaction(async (tx) => {
-      // Incrementa o valor atual da meta
+      // Incrementa o valor atual da meta e marca como concluída se atingiu a meta
+      const newAmount = Number(goal.currentAmount) + dto.amount;
+      const isNowComplete = !goal.completedAt && newAmount >= Number(goal.targetAmount);
       const updated = await tx.goal.update({
         where: { id },
-        data: { currentAmount: { increment: dto.amount } },
+        data: {
+          currentAmount: { increment: dto.amount },
+          ...(isNowComplete && { completedAt: new Date() }),
+        },
       });
 
       // Se informou uma conta, debita o valor dela

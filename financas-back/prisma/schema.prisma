@@ -195,15 +195,16 @@ model Transaction {
 }
 
 model Reminder {
-  id        String          @id @default(uuid())
-  title     String
-  amount    Decimal         @db.Decimal(15, 2)
-  type      TransactionType
-  dueDate   DateTime        @map("due_date")
-  frequency FrequencyType
-  notes     String?         @db.Text
-  createdAt DateTime        @default(now()) @map("created_at")
-  updatedAt DateTime        @updatedAt @map("updated_at")
+  id          String          @id @default(uuid())
+  title       String
+  amount      Decimal         @db.Decimal(15, 2)
+  type        TransactionType
+  dueDate     DateTime        @map("due_date")
+  frequency   FrequencyType
+  notes       String?         @db.Text
+  completedAt DateTime?       @map("completed_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
 
   userId     String       @map("user_id")
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -256,6 +257,7 @@ model Goal {
   category      GoalCategory
   color         String?      @default("#3b82f6")
   icon          String?      @default("Target")
+  completedAt   DateTime?    @map("completed_at")
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 

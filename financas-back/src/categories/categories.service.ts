@@ -34,6 +34,8 @@ export class CategoriesService {
   async remove(id: string, userId: string) {
     const category = await this.findOne(id, userId);
     if (category.isDefault) throw new ForbiddenException('Categorias padrão não podem ser removidas.');
+    // Desvincula transações e lembretes desta categoria (categoryId → null)
+    // O schema já usa onDelete: SetNull no FK, mas garantimos via cascata do Prisma
     await this.prisma.category.delete({ where: { id } });
     return { message: 'Categoria removida com sucesso.' };
   }

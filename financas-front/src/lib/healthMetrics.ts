@@ -72,7 +72,7 @@ export function calculateHealthMetrics(
   const hasEnoughData = monthlyIncome > 0 || monthlyExpenses > 0;
 
   const creditCards  = accounts.filter(a => a.type === 'credit');
-  const loanAccounts = accounts.filter(a => a.type === 'loan');
+  const loanAccounts = accounts.filter(a => a.type === 'loan' || a.type === 'financing');
 
   // ── 1. Taxa de Poupança ──────────────────────────────────────────────────────
   const savingsRate = monthlyIncome > 0
@@ -116,7 +116,7 @@ export function calculateHealthMetrics(
   // ── 3. Reserva de Emergência ─────────────────────────────────────────────────
   const savingsBalance  = accounts.filter(a => a.type === 'savings').reduce((s, a) => s + Math.max(0, a.balance), 0);
   const checkingBalance = accounts.filter(a => a.type === 'checking').reduce((s, a) => s + Math.max(0, a.balance), 0);
-  const emergencyBase   = savingsBalance > 0 ? savingsBalance : checkingBalance * 0.5;
+  const emergencyBase   = savingsBalance + checkingBalance;
   const emergencyMonths = monthRef > 0 ? emergencyBase / monthRef : 0;
 
   const emergencyScore: number =

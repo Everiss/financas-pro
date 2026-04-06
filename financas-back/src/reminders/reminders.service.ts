@@ -41,6 +41,16 @@ export class RemindersService {
     });
   }
 
+  async confirm(id: string, userId: string) {
+    const reminder = await this.findOne(id, userId);
+    if ((reminder as any).completedAt) return reminder; // already confirmed
+    return this.prisma.reminder.update({
+      where: { id },
+      data: { completedAt: new Date() } as any,
+      include: { category: true, account: true },
+    });
+  }
+
   async remove(id: string, userId: string) {
     await this.findOne(id, userId);
     await this.prisma.reminder.delete({ where: { id } });
