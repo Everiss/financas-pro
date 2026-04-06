@@ -36,6 +36,23 @@ export class TransfersService {
     if (!fromAccount || fromAccount.userId !== userId) throw new NotFoundException('Conta de origem não encontrada.');
     if (!toAccount || toAccount.userId !== userId) throw new NotFoundException('Conta de destino não encontrada.');
 
+    // Valida saldo disponível na conta de origem
+    if (fromAccount.type !== 'credit') {
+      if (Number(fromAccount.balance) < dto.amount) {
+        throw new BadRequestException(
+          `Saldo insuficiente. Disponível: R$ ${Number(fromAccount.balance).toFixed(2)}, necessário: R$ ${dto.amount.toFixed(2)}.`,
+        );
+      }
+    } else {
+      // Cartão de crédito como origem (saque): verifica limite disponível
+      const availableCredit = Number(fromAccount.creditLimit ?? 0) - Number(fromAccount.balance);
+      if (availableCredit < dto.amount) {
+        throw new BadRequestException(
+          `Limite insuficiente. Disponível: R$ ${availableCredit.toFixed(2)}, necessário: R$ ${dto.amount.toFixed(2)}.`,
+        );
+      }
+    }
+
     const isBill = dto.isBillPayment ?? toAccount.type === 'credit';
     const date = new Date(dto.date);
     const desc = dto.description?.trim() ||

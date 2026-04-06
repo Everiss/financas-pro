@@ -107,7 +107,9 @@ export class TransactionsService {
    * confirmed immediately and affects the balance; future installments remain pending. */
   async createInstallments(userId: string, dto: CreateInstallmentsDto) {
     const ref = randomUUID();
-    const installmentAmount = Math.round((dto.amount / dto.installments) * 100) / 100;
+    // Calcula valor base (truncado em centavos) e valor da última parcela (absorve resto)
+    const baseAmount = Math.floor((dto.amount / dto.installments) * 100) / 100;
+    const lastAmount = Math.round((dto.amount - baseAmount * (dto.installments - 1)) * 100) / 100;
     const baseDate = new Date(dto.date);
 
     // Look up account type to determine balance impact
@@ -121,8 +123,10 @@ export class TransactionsService {
       const d = new Date(baseDate);
       d.setMonth(d.getMonth() + i);
 
-      // Only the first installment (current period) is confirmed and affects balance
       const isFirst = i === 0;
+      const isLast  = i === dto.installments - 1;
+      // Última parcela absorve centavos restantes para garantir soma exata
+      const installmentAmount = isLast ? lastAmount : baseAmount;
 
       const tx = await this.prisma.transaction.create({
         data: {
@@ -140,6 +144,7 @@ export class TransactionsService {
         include: { category: true, account: true },
       });
 
+      // Apenas a primeira parcela afeta o saldo imediatamente
       if (isFirst && account) {
         const delta = balanceDelta(dto.type, installmentAmount, account.type);
         await this.prisma.bankAccount.update({
@@ -240,8 +245,28 @@ export class TransactionsService {
 
   async remove(id: string, userId: string) {
     const existing = await this.findOne(id, userId);
+    const installmentRef = (existing as any).installmentRef as string | null;
 
     return this.prisma.$transaction(async (tx) => {
+      // Se faz parte de um parcelamento, remove também todas as parcelas PENDENTES irmãs.
+      // Parcelas já confirmadas (isPending=false) já afetaram o saldo — não são tocadas.
+      if (installmentRef) {
+        const pendingSiblings = await tx.transaction.findMany({
+          where: {
+            installmentRef,
+            userId,
+            isPending: true,
+            id: { not: id }, // exclui a própria transação
+          },
+          select: { id: true },
+        });
+        if (pendingSiblings.length > 0) {
+          await tx.transaction.deleteMany({
+            where: { id: { in: pendingSiblings.map(s => s.id) } },
+          });
+        }
+      }
+
       await tx.transaction.delete({ where: { id } });
 
       // Pending transactions never touched balance — nothing to revert

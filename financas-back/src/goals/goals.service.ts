@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiCacheService } from '../ai/ai-cache.service';
 import { CreateGoalDto } from './dto/create-goal.dto';
@@ -69,10 +69,19 @@ export class GoalsService {
       if (dto.accountId) {
         const account = await tx.bankAccount.findUnique({
           where: { id: dto.accountId },
-          select: { type: true, userId: true },
+          select: { type: true, userId: true, balance: true, creditLimit: true, name: true },
         });
         if (!account || account.userId !== userId) {
-          throw new Error('Conta não encontrada.');
+          throw new BadRequestException('Conta não encontrada.');
+        }
+
+        // Valida saldo disponível antes de debitar
+        if (account.type !== 'credit') {
+          if (Number(account.balance) < dto.amount) {
+            throw new BadRequestException(
+              `Saldo insuficiente em "${(account as any).name}". Disponível: R$ ${Number(account.balance).toFixed(2)}.`,
+            );
+          }
         }
 
         // Cria uma transação de despesa na conta
