@@ -1,7 +1,7 @@
 # Arquitetura — Finanças Pro
 
-> **Versão:** 1.0
-> **Data:** 2026-03-26
+> **Versão:** 1.2
+> **Data:** 2026-04-06
 
 ---
 
@@ -119,7 +119,11 @@ Browser → Firebase getIdToken() → Bearer Token
 financas-pro/
 ├── .docs/                          # Documentação do projeto
 │   ├── ARQUITETURA.md
+│   ├── BACKEND.md
+│   ├── DATABASE.md
+│   ├── DOCUMENTATION.md
 │   ├── ESPECIFICACAO_FUNCIONAL.md
+│   ├── FRONTEND.md
 │   └── MEMORY.md
 │
 ├── financas-back/                  # NestJS Backend
@@ -156,7 +160,7 @@ financas-pro/
 │   │
 │   ├── prisma/
 │   │   ├── schema.prisma           # Modelos e relações
-│   │   └── migrations/             # 14 migrations versionadas
+│   │   └── migrations/             # 15 migrations versionadas
 │   │
 │   ├── Dockerfile                  # Multi-stage: build → runtime Node
 │   └── package.json
@@ -199,7 +203,8 @@ financas-pro/
 │   │   │   ├── utils.ts            # formatCurrency, cn (classnames)
 │   │   │   ├── mappers.ts          # TransactionResponse → Transaction
 │   │   │   ├── bankLogos.ts        # getBankSlug, getBankLogoUrl
-│   │   │   ├── healthMetrics.ts    # Cálculo do score de saúde
+│   │   │   ├── healthMetrics.ts    # Cálculo do score de saúde (6 indicadores)
+│   │   │   ├── reportExport.ts     # Exportação XLSX/CSV/PDF de relatórios
 │   │   │   └── constants.ts        # Listas de tipos, categorias padrão
 │   │   │
 │   │   └── types.ts                # Interfaces principais (Transaction, BankAccount, etc.)

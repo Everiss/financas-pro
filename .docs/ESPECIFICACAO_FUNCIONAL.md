@@ -1,7 +1,7 @@
 # Especificação Funcional — Finanças Pro
 
-> **Versão:** 1.0
-> **Data:** 2026-03-26
+> **Versão:** 1.2
+> **Data:** 2026-04-06
 > **Status:** Ativo
 
 ---
@@ -227,7 +227,10 @@ O **Finanças Pro** é uma aplicação web de gestão financeira pessoal que com
 
 **Antecedência:** configurável nas Settings (`reminderAdvanceDays`, padrão: 3 dias)
 
-**Fluxo de pagamento:** ao marcar como pago, cria uma transação na conta vinculada com a data e valor do lembrete.
+**Fluxo de confirmação:**
+- `POST /reminders/:id/confirm` seta `completedAt = now()`
+- Lembretes com `completedAt != null` não geram notificações
+- Recorrência automática baseada em `frequency` é débito técnico (TD-08 — não implementado)
 
 ---
 
@@ -237,7 +240,7 @@ O **Finanças Pro** é uma aplicação web de gestão financeira pessoal que com
 
 **Depósito:** debita valor de uma conta (opcional) e adiciona ao `currentAmount` da meta.
 
-**Conclusão:** quando `currentAmount >= targetAmount`, notificação "Meta atingida" é gerada.
+**Conclusão:** quando `currentAmount >= targetAmount`, `completedAt` é setado automaticamente no `deposit()`. A notificação `goal_reached` só é gerada enquanto `completedAt = null`.
 
 **Estratégia IA:** endpoint de análise de viabilidade, prazo e valor mensal necessário (PRO).
 
@@ -284,6 +287,10 @@ Todas as análises usam **Claude Sonnet 4** com contexto financeiro do usuário 
 | Uso do crédito | 15% | ≤ 30% do limite |
 | Índice de liquidez | 10% | ativos líquidos / despesas mensais |
 | Comprometimento de renda | 10% | despesas fixas / renda |
+
+**Cálculo de DTI:** inclui pagamentos em cartão de crédito + parcelas em contas `loan` e `financing` (empréstimos e financiamentos).
+
+**Reserva de emergência:** base = `savings + checking` (total de ativos líquidos).
 
 **Benchmarks configuráveis** nas Settings (`emergencyFundMonths`, `savingsRateTarget`, `debtIncomeLimit`).
 
@@ -376,27 +383,29 @@ Todas as análises usam **Claude Sonnet 4** com contexto financeiro do usuário 
 
 ### 4.15 Notificações
 
-**Notificações in-app** geradas dinamicamente (sem persistência, recalculadas a cada request):
+**Notificações in-app** geradas dinamicamente (sem persistência, recalculadas a cada request). Thresholds lidos de `user_settings` com fallback para defaults.
 
 | Tipo | Severidade | Condição |
 |------|-----------|----------|
-| `reminder_overdue` | danger | Lembrete com vencimento passado |
-| `reminder_due` | warning/info | Lembrete a vencer em `reminderAdvanceDays` dias |
-| `budget_exceeded` | warning | Categoria ultrapassou orçamento mensal |
-| `goal_reached` | success | Meta atingiu valor alvo |
-| `debt_due` | warning/info | Empréstimo/financiamento vence hoje ou amanhã |
+| `reminder_overdue` | danger | Lembrete com `completedAt = null` e vencimento passado |
+| `reminder_due` | warning/info | Lembrete com `completedAt = null` a vencer em `reminderAdvanceDays` dias |
+| `budget_alert` | info | Categoria atingiu `budgetAlertThreshold`% (padrão: 80%) do orçamento |
+| `budget_exceeded` | warning | Categoria ultrapassou 100% do orçamento |
+| `goal_reached` | success | Meta com `completedAt = null` e `currentAmount >= targetAmount` |
+| `debt_due` | warning/info | Conta loan/financing com `dueDay` = hoje ou amanhã |
+| `low_balance` | warning/danger | Conta checking/savings com `balance < lowBalanceAlert` (padrão: R$ 100) |
+| `large_transaction` | info | Despesa confirmada nos últimos 7 dias com `amount > largeTransactionAlert` (padrão: R$ 500) |
+| `credit_usage_alert` | warning/danger | Cartão com `balance/creditLimit >= creditUsageAlert`% (padrão: 70%) |
+| `rebalance_needed` | info | Desvio da alocação alvo >= `rebalanceThreshold`% (padrão: 5%) |
 
-**Planejado (ver 4.16):**
-- `low_balance` — saldo abaixo do mínimo
-- `large_transaction` — transação acima do limiar
-- `credit_usage` — uso de cartão acima do limiar
-- `rebalance_needed` — portfólio desviado da alocação alvo
+Ordenação das notificações: `danger → warning → info → success`
 
 ---
 
 ### 4.16 Comunicação Ativa
 
-> **Status:** planejado — ver análise em `.docs/MEMORY.md`
+> **Status (Fase 1):** concluído — notificações in-app integradas com settings
+> **Status (Fase 2):** planejado — email + cron jobs
 
 **Relatório semanal** (toda segunda-feira, se `weeklyReport = true`):
 - Resumo de receitas e despesas da semana
