@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
+import { PushService } from '../push/push.service';
 
 @Injectable()
 export class ScheduledService {
@@ -12,6 +13,7 @@ export class ScheduledService {
     private prisma: PrismaService,
     private notifications: NotificationsService,
     private email: EmailService,
+    private push: PushService,
   ) {}
 
   // ── Alertas diários (todo dia às 7h) ──────────────────────────────────────
@@ -21,32 +23,55 @@ export class ScheduledService {
 
     const users = await this.prisma.user.findMany({
       where: {
-        settings: { emailNotifications: true },
+        OR: [
+          { settings: { emailNotifications: true } },
+          { settings: { pushNotifications: true } },
+        ],
       },
-      select: { id: true, email: true, displayName: true },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        settings: { select: { emailNotifications: true, pushNotifications: true } },
+      },
     });
 
     for (const user of users) {
       try {
         const alerts = await this.notifications.getAll(user.id);
-        // Só envia se houver alertas com severidade danger ou warning
         const urgent = alerts.filter(a => a.severity === 'danger' || a.severity === 'warning');
         if (urgent.length === 0) continue;
 
-        await this.email.sendAlerts(user.email, {
-          userName: user.displayName,
-          notifications: urgent.map(a => ({
-            title: a.title,
-            description: a.description,
-            severity: a.severity,
-          })),
-        });
+        // Email
+        if (user.settings?.emailNotifications) {
+          await this.email.sendAlerts(user.email, {
+            userName: user.displayName,
+            notifications: urgent.map(a => ({
+              title: a.title,
+              description: a.description,
+              severity: a.severity,
+            })),
+          });
+        }
+
+        // Push (envia uma notificação resumida com o alerta mais grave)
+        if (user.settings?.pushNotifications) {
+          const top = urgent[0];
+          await this.push.sendToUser(user.id, {
+            title: top.title,
+            body: top.description,
+            icon: '/icon-192.png',
+            badge: '/icon-72.png',
+            tag: top.type,
+            url: top.tab ? `/${top.tab}` : '/',
+          });
+        }
       } catch (err) {
         this.logger.error(`Erro ao enviar alertas para ${user.email}: ${err}`);
       }
     }
 
-    this.logger.log(`Cron: alertas enviados para ${users.length} usuário(s)`);
+    this.logger.log(`Cron: alertas diários processados para ${users.length} usuário(s)`);
   }
 
   // ── Relatório semanal (toda segunda às 8h) ────────────────────────────────

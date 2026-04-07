@@ -20,18 +20,19 @@ model User {
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  banks           Bank[]
-  accounts        BankAccount[]
-  categories      Category[]
-  transactions    Transaction[]
-  reminders       Reminder[]
-  goals           Goal[]
-  transfers       Transfer[]
-  receipts        Receipt[]
-  aiInsightCache  AiInsightCache?
-  auditLogs       AuditLog[]
-  subscription    Subscription?
-  settings        UserSettings?
+  banks              Bank[]
+  accounts           BankAccount[]
+  categories         Category[]
+  transactions       Transaction[]
+  reminders          Reminder[]
+  goals              Goal[]
+  transfers          Transfer[]
+  receipts           Receipt[]
+  aiInsightCache     AiInsightCache?
+  auditLogs          AuditLog[]
+  subscription       Subscription?
+  settings           UserSettings?
+  pushSubscriptions  PushSubscription[]
 
   @@map("users")
 }
@@ -331,6 +332,20 @@ model ReceiptItem {
 
   @@index([receiptId])
   @@map("receipt_items")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  userAgent String?  @map("user_agent") @db.VarChar(300)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 // --- Enums ---

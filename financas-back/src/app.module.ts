@@ -23,6 +23,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { SettingsModule } from './settings/settings.module';
 import { FaturaImportModule } from './fatura-import/fatura-import.module';
 import { CouponScannerModule } from './coupon-scanner/coupon-scanner.module';
+import { PushModule } from './push/push.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { CouponScannerModule } from './coupon-scanner/coupon-scanner.module';
     SettingsModule,
     FaturaImportModule,
     CouponScannerModule,
+    PushModule,
     ScheduledModule,
   ],
   controllers: [AppController],

@@ -6,6 +6,12 @@ import { settingsApi, usersApi, UpdateUserPayload } from '../services/api';
 import { UserSettings, UserProfile } from '../types';
 import { User } from '../firebase';
 import { CURRENCIES } from '../lib/constants';
+import {
+  isPushSupported,
+  isPushSubscribed,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '../services/pushService';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -183,6 +189,9 @@ export function SettingsView({ user, profile, onProfileUpdate }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const pushSupported = isPushSupported();
 
   // Profile fields
   const [displayName, setDisplayName] = useState(profile?.displayName ?? user.displayName ?? '');
@@ -192,10 +201,39 @@ export function SettingsView({ user, profile, onProfileUpdate }: Props) {
     settingsApi.get()
       .then(data => { setSettings(s => ({ ...s, ...data })); setLoading(false); })
       .catch(() => setLoading(false));
+
+    // Verifica se já tem subscription ativa no browser
+    isPushSubscribed().then(setPushSubscribed);
   }, []);
 
   const set = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) =>
     setSettings(s => ({ ...s, [key]: value }));
+
+  const handlePushToggle = async (enable: boolean) => {
+    if (!pushSupported) return;
+    setPushLoading(true);
+    setError(null);
+    try {
+      if (enable) {
+        const endpoint = await subscribeToPush();
+        if (!endpoint) {
+          setError('Permissão para notificações negada pelo navegador.');
+          setPushLoading(false);
+          return;
+        }
+        setPushSubscribed(true);
+        set('pushNotifications', true);
+      } else {
+        await unsubscribeFromPush();
+        setPushSubscribed(false);
+        set('pushNotifications', false);
+      }
+    } catch {
+      setError('Erro ao configurar notificações push.');
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true); setError(null);
@@ -262,8 +300,42 @@ export function SettingsView({ user, profile, onProfileUpdate }: Props) {
       <SectionCard title="Comunicação" icon="Bell" color="text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/20">
         <Toggle label="Notificações por e-mail" description="Receba alertas financeiros no seu e-mail"
           checked={settings.emailNotifications} onChange={v => set('emailNotifications', v)} />
-        <Toggle label="Notificações push" description="Alertas em tempo real no navegador"
-          checked={settings.pushNotifications} onChange={v => set('pushNotifications', v)} />
+
+        {/* Push notifications — com ativação real do browser */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-blue-900 dark:text-slate-100">Notificações push</p>
+            <p className="text-xs text-blue-400 dark:text-slate-500 mt-0.5">
+              {!pushSupported
+                ? 'Não suportado neste navegador'
+                : pushSubscribed
+                  ? 'Ativo neste dispositivo'
+                  : 'Alertas em tempo real no navegador'}
+            </p>
+          </div>
+          {pushLoading ? (
+            <span className="w-11 flex justify-center">
+              <span className="w-5 h-5 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={!pushSupported}
+              onClick={() => handlePushToggle(!pushSubscribed)}
+              className={cn(
+                'relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 focus:outline-none',
+                !pushSupported ? 'opacity-40 cursor-not-allowed bg-slate-200 dark:bg-slate-700'
+                  : pushSubscribed ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700',
+              )}
+            >
+              <span className={cn(
+                'inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 mt-0.5',
+                pushSubscribed ? 'translate-x-5' : 'translate-x-0.5',
+              )} />
+            </button>
+          )}
+        </div>
+
         <Toggle label="Relatório semanal" description="Resumo das movimentações da semana toda segunda-feira"
           checked={settings.weeklyReport} onChange={v => set('weeklyReport', v)} />
         <Toggle label="Relatório mensal" description="Análise completa do mês no primeiro dia útil"
