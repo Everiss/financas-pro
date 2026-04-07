@@ -54,7 +54,41 @@ export class TransactionsService {
         ...(query.endDate && { lte: new Date(query.endDate) }),
       };
     }
+    if (query.search) {
+      where.description = { contains: query.search };
+    }
 
+    // Paginação: page/limit opcionais (sem page = retorna tudo, retrocompat)
+    if (query.page !== undefined || query.limit !== undefined) {
+      const page  = query.page  ?? 1;
+      const limit = query.limit ?? 20;
+      const skip  = (page - 1) * limit;
+
+      const [data, total] = await this.prisma.$transaction([
+        this.prisma.transaction.findMany({
+          where,
+          include: { category: true, account: true },
+          orderBy: { date: 'desc' },
+          skip,
+          take: limit,
+        }),
+        this.prisma.transaction.count({ where }),
+      ]);
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: page * limit < total,
+          hasPrevPage: page > 1,
+        },
+      };
+    }
+
+    // Sem paginação — retorna lista plana (retrocompatibilidade)
     return this.prisma.transaction.findMany({
       where,
       include: { category: true, account: true },

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ScheduledModule } from './scheduled/scheduled.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -25,6 +27,7 @@ import { CouponScannerModule } from './coupon-scanner/coupon-scanner.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60_000, limit: 60 },  // 60 req/min geral
       { name: 'ai',      ttl: 60_000, limit: 10 },  // 10 req/min para IA (sobrescrito no controller)
@@ -47,6 +50,7 @@ import { CouponScannerModule } from './coupon-scanner/coupon-scanner.module';
     SettingsModule,
     FaturaImportModule,
     CouponScannerModule,
+    ScheduledModule,
   ],
   controllers: [AppController],
   providers: [AppService],

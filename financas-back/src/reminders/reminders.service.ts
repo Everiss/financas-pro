@@ -43,10 +43,27 @@ export class RemindersService {
 
   async confirm(id: string, userId: string) {
     const reminder = await this.findOne(id, userId);
-    if ((reminder as any).completedAt) return reminder; // already confirmed
+    if ((reminder as any).completedAt && reminder.frequency === 'once') return reminder;
+
+    if (reminder.frequency === 'once') {
+      // Única: marcar como concluído definitivamente
+      return this.prisma.reminder.update({
+        where: { id },
+        data: { completedAt: new Date() } as any,
+        include: { category: true, account: true },
+      });
+    }
+
+    // Recorrente: avança dueDate para o próximo período e reseta completedAt
+    const next = new Date(reminder.dueDate);
+    if (reminder.frequency === 'daily')   next.setDate(next.getDate() + 1);
+    if (reminder.frequency === 'weekly')  next.setDate(next.getDate() + 7);
+    if (reminder.frequency === 'monthly') next.setMonth(next.getMonth() + 1);
+    if (reminder.frequency === 'yearly')  next.setFullYear(next.getFullYear() + 1);
+
     return this.prisma.reminder.update({
       where: { id },
-      data: { completedAt: new Date() } as any,
+      data: { dueDate: next, completedAt: null } as any,
       include: { category: true, account: true },
     });
   }

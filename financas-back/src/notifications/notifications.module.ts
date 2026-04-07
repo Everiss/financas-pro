@@ -8,5 +8,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [PrismaModule, AuthModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],
+  exports: [NotificationsService],
 })
 export class NotificationsModule {}

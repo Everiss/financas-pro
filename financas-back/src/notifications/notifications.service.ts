@@ -304,13 +304,18 @@ export class NotificationsService {
         const variable = investmentAccounts
           .filter(a => VAR_TYPES.includes(a.investmentType ?? ''))
           .reduce((s, a) => s + Number(a.balance), 0);
+        const international = investmentAccounts
+          .filter(a => INTL_TYPES.includes(a.investmentType ?? ''))
+          .reduce((s, a) => s + Number(a.balance), 0);
 
-        const actualFixed    = (fixed    / totalInvested) * 100;
-        const actualVariable = (variable / totalInvested) * 100;
+        const actualFixed         = (fixed         / totalInvested) * 100;
+        const actualVariable      = (variable      / totalInvested) * 100;
+        const actualInternational = (international / totalInvested) * 100;
 
         const deviations = [
-          { label: 'Renda Fixa',    actual: actualFixed,    target: settings.fixedIncomeTarget },
-          { label: 'Renda Variável', actual: actualVariable, target: settings.variableTarget },
+          { label: 'Renda Fixa',       actual: actualFixed,         target: settings.fixedIncomeTarget },
+          { label: 'Renda Variável',   actual: actualVariable,      target: settings.variableTarget },
+          { label: 'Internacional',    actual: actualInternational, target: settings.internationalTarget },
         ];
 
         for (const d of deviations) {

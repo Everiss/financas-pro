@@ -91,16 +91,8 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
         });
       }
 
-      if (r.frequency === 'once') {
-        await remindersApi.confirm(r.id);
-      } else {
-        const next = new Date(r.dueDate.toDate());
-        if (r.frequency === 'daily')   next.setDate(next.getDate() + 1);
-        if (r.frequency === 'weekly')  next.setDate(next.getDate() + 7);
-        if (r.frequency === 'monthly') next.setMonth(next.getMonth() + 1);
-        if (r.frequency === 'yearly')  next.setFullYear(next.getFullYear() + 1);
-        await remindersApi.update(r.id, { dueDate: next.toISOString().split('T')[0] });
-      }
+      // confirm() no backend: 'once' → seta completedAt; recorrentes → avança dueDate + reseta completedAt
+      await remindersApi.confirm(r.id);
       await onRefresh();
     } catch (err) {
       console.error('Erro ao registrar pagamento:', err);

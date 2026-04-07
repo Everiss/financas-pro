@@ -52,8 +52,12 @@ export const settingsApi = {
 
 export const transactionsApi = {
   getAll: (params?: TransactionQuery) => {
-    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
-    return request<TransactionResponse[]>(`/transactions${qs}`);
+    const qs = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return request<TransactionResponse[] | PaginatedTransactions>(`/transactions${qs}`);
+  },
+  getPaginated: (params: TransactionQuery & { page: number; limit: number }) => {
+    const qs = '?' + new URLSearchParams(params as any).toString();
+    return request<PaginatedTransactions>(`/transactions${qs}`);
   },
   create: (data: CreateTransactionPayload) =>
     request<TransactionResponse>('/transactions', { method: 'POST', body: JSON.stringify(data) }),
@@ -423,6 +427,21 @@ export interface TransactionQuery {
   type?: 'income' | 'expense';
   categoryId?: string;
   accountId?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface PaginatedTransactions {
+  data: TransactionResponse[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
 }
 
 export interface CreateTransactionPayload {
