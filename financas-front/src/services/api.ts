@@ -518,6 +518,7 @@ export interface GoalResponse {
   color?: string;
   icon?: string;
   progressPercent?: number;
+  completedAt?: string | null;
   userId: string;
 }
 
@@ -543,6 +544,7 @@ export interface ReminderResponse {
   categoryId?: string;
   category?: CategoryResponse;
   account?: AccountResponse;
+  completedAt?: string | null;
   userId: string;
 }
 

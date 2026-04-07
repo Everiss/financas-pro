@@ -165,7 +165,11 @@ export function GoalsView({ goals, userId, transactions, accounts, categories, o
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [aiAdvice, setAiAdvice] = useState<AiGoalsStrategy | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const { confirm } = useConfirm();
+
+  const activeGoals    = goals.filter(g => !g.completedAt);
+  const completedGoals = goals.filter(g => !!g.completedAt);
 
   const handleEdit = (goal: Goal) => {
     setEditingGoal(goal);
@@ -203,7 +207,21 @@ export function GoalsView({ goals, userId, transactions, accounts, categories, o
           <h3 className="text-xl font-bold text-blue-900 dark:text-slate-100">Suas Metas</h3>
           <p className="text-sm text-blue-500 dark:text-slate-400">Planeje e acompanhe seus objetivos financeiros.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {completedGoals.length > 0 && (
+            <button
+              onClick={() => setShowCompleted(s => !s)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-2xl border transition-all',
+                showCompleted
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400'
+                  : 'border-blue-200 dark:border-slate-700 text-blue-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800'
+              )}
+            >
+              <Icons.Trophy className="w-3.5 h-3.5" />
+              Conquistas ({completedGoals.length})
+            </button>
+          )}
           <PlanGate feature="ai">
             <Button variant="secondary" onClick={getAiHelp} disabled={loadingAi || goals.length === 0} className="relative overflow-hidden group">
               {loadingAi && (
@@ -311,18 +329,47 @@ export function GoalsView({ goals, userId, transactions, accounts, categories, o
         </motion.div>
       )}
 
+      {showCompleted && completedGoals.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Icons.Trophy className="w-4 h-4 text-emerald-500" />
+            <h4 className="text-sm font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">Metas Conquistadas</h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {completedGoals.map(goal => (
+              <GoalItem
+                key={goal.id}
+                goal={goal}
+                accounts={accounts}
+                onEdit={() => handleEdit(goal)}
+                onDelete={() => handleDelete(goal)}
+                onRefresh={onRefresh}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {goals.length === 0 ? (
+        {activeGoals.length === 0 && !showCompleted ? (
           <div className="col-span-full py-20 text-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-3xl border border-dashed border-blue-200 dark:border-slate-600">
             <div className="w-20 h-20 bg-blue-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <Icons.Target className="w-10 h-10 text-blue-300 dark:text-slate-500" />
             </div>
-            <h4 className="text-lg font-bold text-blue-900 dark:text-slate-100">Nenhuma meta definida</h4>
-            <p className="text-blue-500 dark:text-slate-400 max-w-xs mx-auto mt-2">Comece a planejar seu futuro criando sua primeira meta financeira.</p>
-            <Button variant="secondary" className="mt-6" onClick={() => setIsModalOpen(true)}>Criar Primeira Meta</Button>
+            <h4 className="text-lg font-bold text-blue-900 dark:text-slate-100">
+              {completedGoals.length > 0 ? 'Todas as metas concluídas!' : 'Nenhuma meta definida'}
+            </h4>
+            <p className="text-blue-500 dark:text-slate-400 max-w-xs mx-auto mt-2">
+              {completedGoals.length > 0
+                ? 'Crie novas metas para continuar evoluindo.'
+                : 'Comece a planejar seu futuro criando sua primeira meta financeira.'}
+            </p>
+            <Button variant="secondary" className="mt-6" onClick={() => setIsModalOpen(true)}>
+              {completedGoals.length > 0 ? 'Nova Meta' : 'Criar Primeira Meta'}
+            </Button>
           </div>
         ) : (
-          goals.map(goal => (
+          activeGoals.map(goal => (
             <GoalItem
               key={goal.id}
               goal={goal}

@@ -86,6 +86,7 @@ export function toGoal(r: GoalResponse): Goal {
     category: r.category as Goal['category'],
     color: r.color,
     icon: r.icon,
+    completedAt: r.completedAt ?? null,
     userId: r.userId,
   };
 }
@@ -101,6 +102,7 @@ export function toReminder(r: ReminderResponse): Reminder {
     dueDate: fakeTimestamp(r.dueDate) as any,
     frequency: r.frequency,
     notes: r.notes,
+    completedAt: r.completedAt ?? null,
     userId: r.userId,
   };
 }

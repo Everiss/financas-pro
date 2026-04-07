@@ -34,6 +34,7 @@ export interface Reminder {
   dueDate: Timestamp;
   frequency: 'once' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   notes?: string;
+  completedAt?: string | null;
   userId: string;
 }
 
@@ -114,6 +115,7 @@ export interface Goal {
   category: 'Viagem' | 'Casa' | 'Carro' | 'Educação' | 'Reserva de Emergência' | 'Aposentadoria' | 'Outros';
   color?: string;
   icon?: string;
+  completedAt?: string | null;
   userId: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;

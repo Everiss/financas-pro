@@ -1,6 +1,7 @@
 import { Controller, Post, UseGuards, UploadedFile, UseInterceptors, BadRequestException, Body } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AiService } from './ai.service';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -12,7 +13,8 @@ const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 @ApiTags('ai')
 @ApiBearerAuth()
-@UseGuards(FirebaseAuthGuard, PlanGuard)
+@UseGuards(ThrottlerGuard, FirebaseAuthGuard, PlanGuard)
+@Throttle({ default: { ttl: 60_000, limit: 10 } })  // 10 calls/min por IP nos endpoints de IA
 @Controller('ai')
 export class AiController {
   constructor(private aiService: AiService) {}

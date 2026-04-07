@@ -4,18 +4,20 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CouponScannerService, ConfirmReceiptDto } from './coupon-scanner.service';
 
 @ApiTags('coupon-scanner')
 @ApiBearerAuth()
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(ThrottlerGuard, FirebaseAuthGuard)
 @Controller('coupon-scanner')
 export class CouponScannerController {
   constructor(private readonly service: CouponScannerService) {}
 
   /** Envia imagem do cupom e recebe dados extraídos pela IA */
   @Post('scan')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })  // 5 scans/min por IP
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file'))
   async scan(@UploadedFile() file: Express.Multer.File, @Request() req: any) {

@@ -17,6 +17,7 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
   const [payingId, setPayingId] = useState<string | null>(null);
   const [pickingAccountFor, setPickingAccountFor] = useState<string | null>(null);
   const [pickedAccountId, setPickedAccountId] = useState('');
+  const [showCompleted, setShowCompleted] = useState(false);
   const { confirm } = useConfirm();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -29,16 +30,20 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
   const frequencyLabel = (f: string) =>
     ({ once: 'Única', daily: 'Diária', weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' }[f] ?? f);
 
-  // Apply search + filters
+  const activeReminders    = useMemo(() => reminders.filter(r => !r.completedAt), [reminders]);
+  const completedReminders = useMemo(() => reminders.filter(r => !!r.completedAt), [reminders]);
+
+  // Apply search + filters (only on active or completed depending on tab)
   const filtered = useMemo(() => {
+    const base = showCompleted ? completedReminders : activeReminders;
     const q = search.toLowerCase();
-    return reminders.filter(r => {
+    return base.filter(r => {
       if (q && !r.title.toLowerCase().includes(q) && !(r.notes?.toLowerCase().includes(q))) return false;
       if (filterType !== 'all' && r.type !== filterType) return false;
       if (filterFreq !== 'all' && r.frequency !== filterFreq) return false;
       return true;
     });
-  }, [reminders, search, filterType, filterFreq]);
+  }, [reminders, search, filterType, filterFreq, showCompleted, activeReminders, completedReminders]);
 
   // Reset page when filters change
   const resetPage = () => setPage(1);
@@ -87,7 +92,7 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
       }
 
       if (r.frequency === 'once') {
-        await remindersApi.delete(r.id);
+        await remindersApi.confirm(r.id);
       } else {
         const next = new Date(r.dueDate.toDate());
         if (r.frequency === 'daily')   next.setDate(next.getDate() + 1);
@@ -119,13 +124,14 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
   const ReminderRow = ({ r }: { r: Reminder }) => {
     const isPaying = payingId === r.id;
     const isPickingAccount = pickingAccountFor === r.id;
-    const isOverdueRow = r.dueDate.toDate() < now;
+    const isOverdueRow = !r.completedAt && r.dueDate.toDate() < now;
+    const isCompleted = !!r.completedAt;
     const amount = effectiveAmount(r);
     const isInformational = amount === 0;
     const nonCreditAccounts = accounts.filter(a => a.type !== 'credit');
     return (
       <>
-        <tr className="hover:bg-blue-50/80 dark:hover:bg-slate-800/50 transition-colors group">
+        <tr className={cn('transition-colors group', isCompleted ? 'opacity-60' : 'hover:bg-blue-50/80 dark:hover:bg-slate-800/50')}>
           <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
             <span className={cn(isOverdueRow ? 'text-red-500 font-semibold' : 'text-blue-500 dark:text-slate-400')}>
               {formatDate(r.dueDate.toDate())}
@@ -142,28 +148,35 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
             {isInformational ? <span className="text-blue-400 dark:text-slate-500 text-xs font-medium">Aviso</span> : <>{r.type === 'income' ? '+' : '−'} {formatCurrency(amount)}</>}
           </td>
           <td className="px-6 py-4 text-right">
-            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-              <button
-                onClick={() => handlePay(r)}
-                disabled={isPaying}
-                className={cn(
-                  'px-3 py-1.5 text-xs font-bold rounded-xl transition-all disabled:opacity-50',
-                  isInformational
-                    ? 'bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-slate-300 hover:bg-blue-200 dark:hover:bg-slate-600'
-                    : r.type === 'income'
-                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200'
-                      : 'bg-blue-900 text-white hover:bg-blue-800'
-                )}
-              >
-                {isPaying ? '...' : isInformational ? 'Concluir' : r.type === 'income' ? 'Receber' : 'Pagar'}
-              </button>
-              <button
-                onClick={() => handleDelete(r)}
-                className="p-1.5 text-blue-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors"
-              >
-                <Icons.Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {isCompleted ? (
+              <div className="flex items-center justify-end gap-1.5">
+                <Icons.CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Concluído</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                <button
+                  onClick={() => handlePay(r)}
+                  disabled={isPaying}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-bold rounded-xl transition-all disabled:opacity-50',
+                    isInformational
+                      ? 'bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-slate-300 hover:bg-blue-200 dark:hover:bg-slate-600'
+                      : r.type === 'income'
+                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200'
+                        : 'bg-blue-900 text-white hover:bg-blue-800'
+                  )}
+                >
+                  {isPaying ? '...' : isInformational ? 'Concluir' : r.type === 'income' ? 'Receber' : 'Pagar'}
+                </button>
+                <button
+                  onClick={() => handleDelete(r)}
+                  className="p-1.5 text-blue-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full transition-colors"
+                >
+                  <Icons.Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </td>
         </tr>
         {isPickingAccount && (
@@ -258,6 +271,20 @@ export function ReminderManager({ reminders, categories, accounts, userId, onRef
             <option value="yearly">Anual</option>
           </select>
 
+          {completedReminders.length > 0 && (
+            <button
+              onClick={() => { setShowCompleted(s => !s); resetPage(); }}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-2xl border transition-all',
+                showCompleted
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400'
+                  : 'border-blue-200 dark:border-slate-700 text-blue-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800'
+              )}
+            >
+              <Icons.CheckCircle className="w-3.5 h-3.5" />
+              Concluídos ({completedReminders.length})
+            </button>
+          )}
           <Button onClick={() => setIsAdding(true)}>
             <Icons.Plus className="w-4 h-4" />
             Novo Lembrete
